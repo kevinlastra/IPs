@@ -22,7 +22,7 @@ module fifo
     output logic                empty
   );
 
-if (buffer_size == 1) begin
+if (buffer_size == 1) begin : single_buffer
 
   logic [data_size-1:0] data;
   logic valid;
@@ -39,15 +39,14 @@ if (buffer_size == 1) begin
   always_comb begin
     if(deq_ready)
       deq_data = data;
-    enq_ready = !full;
+    enq_ready = !full || full && deq_ready;
     deq_valid = !empty;
-
 
     full <= valid && !flush;
     empty <= !valid && flush;
   end
 
-end else if (buffer_size > 1) begin
+end else if (buffer_size > 1) begin : nsize_buffer
 
   logic [data_size-1:0] data[buffer_size];
   logic [buffer_size-1:0] wr_ptr;
@@ -55,7 +54,11 @@ end else if (buffer_size > 1) begin
 
   always_ff @(posedge clk) begin
     if(enq_valid && !full) begin
-      data[wr_ptr] <= enq_data;
+      for(int i = 0; i < buffer_size; i++) begin
+        if(wr_ptr[i]) begin
+          data[i] <= enq_data;
+        end
+      end
     end
   end
 
@@ -63,41 +66,41 @@ end else if (buffer_size > 1) begin
     if(!rst_n) begin
       wr_ptr <= 1;
       rd_ptr <= 1;
-    end else begin 
+    end if(!flush) begin 
       if(enq_valid && !full) begin
-        if(wr_ptr << 1 == 0)
-          wr_ptr <= 1;
-        else
-          wr_ptr <= wr_ptr << 1;
+        wr_ptr <= (wr_ptr << 1 == '0) ? (buffer_size)'(1) : wr_ptr << 1;
       end
 
       if(deq_ready && !empty) begin
-        if(rd_ptr << 1 == 0)
-          rd_ptr <= 1;
-        else
-          rd_ptr <= rd_ptr << 1;
+        rd_ptr <= (rd_ptr << 1 == '0) ? (buffer_size)'(1) : rd_ptr << 1;
       end
-
-      if(flush) begin
-        rd_ptr <= 1;
-        wr_ptr <= 1;
-      end
+    end if(flush) begin
+      rd_ptr <= 1;
+      wr_ptr <= 1;
     end
   end
 
   always_comb begin
-    if(deq_ready)
-      deq_data = data[rd_ptr];
+    deq_data = '0;
+    for(int i = 0; i < buffer_size; i++) begin
+      if(rd_ptr[i]) begin
+        deq_data = data[i];
+      end
+    end
+    
     enq_ready = !full;
     deq_valid = !empty;
-
-    if(wr_ptr << 1 == 0)
-      full = 1 == rd_ptr && !flush;
-    else
-      full = wr_ptr << 1 == rd_ptr && !flush;
-    empty = wr_ptr == rd_ptr && flush;
   end
 
+  always_comb begin
+    full = (wr_ptr << 1 == 0)? ('1 == rd_ptr) : (wr_ptr << 1 == rd_ptr);
+    empty = (wr_ptr == rd_ptr);
+  end
+
+end else begin : error
+  initial begin
+    assert (1) else $fatal("The buffer size shall be greather or equal than 1");
+  end
 end
 
 endmodule
