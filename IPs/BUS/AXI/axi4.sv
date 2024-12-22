@@ -2,53 +2,16 @@
 // AXI4 Interface
 // Dont support User port
 
-interface 
-  (
+interface axi4
+  import axi4_pkg::*;
+  #(
     parameter alen = 32,
     parameter xlen = 32,
     parameter idlen = 2
-  ) 
-  axi4 (input logic clk);
+  )
+  (input logic clk);
 
-  // Burst types
-  enum bit[1:0]
-  {
-    FIXED    = 2'b00,
-    INCR     = 2'b01,
-    WRAP     = 2'b10,
-    RESERVED = 2'b11
-  } AXBurst_t;
-
-  // Sizes types
-  enum bit[2:0]
-  {
-    S1   = 3'b000,
-    S2   = 3'b001,
-    S4   = 3'b010,
-    S8   = 3'b011,
-    S16  = 3'b100,
-    S32  = 3'b101,
-    S64  = 3'b110,
-    S128 = 3'b111
-  } AXSize_t;
-
-  // Responses types
-  enum bit[1:0]
-  {
-    OKAY    = 2'b00,
-    EXOOKAY = 2'b01,
-    SLVERR  = 2'b10,
-    DECERR  = 2'b11
-  } XRESP_t;
-
-  //
-  enum bit[0]
-  {
-    NORMAL    = 1'b0,
-    EXCLUSIVE = 1'b1
-  } Lock_t;
-
-  struct {
+  typedef struct {
     // 
     logic bufferable; 
     // 
@@ -59,7 +22,7 @@ interface
     logic WA;
   } AXCache_t;
 
-  struct {
+  typedef struct {
     // 1: priviledged
     // 0: unpriviledged
     logic priviledge; 
@@ -72,7 +35,7 @@ interface
   } AXProt_t;
   
   
-  struct {
+  typedef struct {
     logic [alen-1:0]  addr;
     AXSize_t          size;
     AXBurst_t         burst;
@@ -85,19 +48,19 @@ interface
     logic [3:0]       region;
   } AX_t;
 
-  struct {
-    logic             last;
-    logic [xlen-1:0]  data;
-    logic [-1:0]      strb;
-    logic [idlen-1:0] id;
+  typedef struct {
+    logic                last;
+    logic [xlen-1:0]     data;
+    logic [(xlen/8)-1:0] strb;
+    logic [idlen-1:0]    id;
   } W_t;
 
-  struct {
+  typedef struct {
     XRESP_t           resp;
     logic [idlen-1:0] id;
   } B_t;
 
-  struct {
+  typedef struct {
     logic             last;
     logic [xlen-1:0]  data;
     XRESP_t           resp;
@@ -124,8 +87,6 @@ interface
   R_t   r;
   logic r_valid;
   logic r_ready;
-
-
 
   modport master
   (
@@ -165,4 +126,25 @@ interface
     input  r_ready
   );
 
+  //function automatic Init_master();
+  //  aw       = '0;
+  //  aw_valid = 1'b0;
+  //  w        = '0;
+  //  w_valid  = 1'b0;
+  //  b_ready  = 1'b0;
+  //  ar       = '0;
+  //  ar_valid = 1'b0;
+  //  r_ready  = 1'b0;
+  //endfunction
+
+  //function automatic Init_slave();
+  //  aw_ready = 1'b0;
+  //  w_ready  = 1'b0;
+  //  b        = '0;
+  //  b_valid  = 1'b0;
+  //  ar_ready = 1'b0;
+  //  r        = '0;
+  //  r_valid  = 1'b0;
+  //endfunction
+  
 endinterface;
