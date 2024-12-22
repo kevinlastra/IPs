@@ -1,23 +1,40 @@
 
 
-interface uart_defs;
+package uart_defs;
 
-  parameter DIVIDER_ADR       = 8'h00;
-  parameter RXDATA_ADR        = 8'h04;
-  parameter RXSTATUS_ADR      = 8'h08;
-  parameter TXDATA_ADR        = 8'h0C;
-  parameter TXSTATUS_ADR      = 8'h10;
-  parameter IRQMASK_ADR       = 8'h14;
-  parameter UART_STATUS_ADR   = 8'h18;
-  parameter VERSION_ADR       = 8'h1C;
-
-  parameter VERSION_MAJOR   = 16'h1;
-  parameter VERSION_MINOR   = 8'h0;
-  parameter VERSION_PATCHES = 8'h0;
+  // Uart memory map
+  localparam DIVIDER_ADR       = 12'h000;
+  localparam RXDATA_ADR        = 12'h004;
+  localparam RXSTATUS_ADR      = 12'h008;
+  localparam TXDATA_ADR        = 12'h00C;
+  localparam TXSTATUS_ADR      = 12'h010;
+  localparam RXIRQMASK_ADR     = 12'h014;
+  localparam TXIRQMASK_ADR     = 12'h018;
+  localparam UART_STATUS_ADR   = 12'h01C;
+  localparam VERSION_ADR       = 12'h020;
 
   // Modes of communication
-  parameter SIMPLEX    = 2'b00;
-  parameter HALFDUPLEX = 2'b01;
-  parameter FULLDUPLEX = 2'b10;
+  localparam SIMPLEX    = 2'b00;
+  localparam HALFDUPLEX = 2'b01;
+  localparam FULLDUPLEX = 2'b10;
 
-endinterface
+  localparam VERSION_MAJOR   = 16'h1;
+  localparam VERSION_MINOR   = 8'h0;
+  localparam VERSION_PATCHES = 8'h0;
+
+  typedef struct packed {
+    logic fifo_empty;
+    logic fifo_half_full;
+    logic data_sent;
+  } TXIrqFlags_t;
+
+  typedef struct packed {
+    logic data_ready;
+    logic fifo_half_full;
+    logic fifo_full;
+    logic parity_error;
+    logic framing_error;
+    logic overrun_error;
+  } RXIrqFlags_t;
+
+endpackage

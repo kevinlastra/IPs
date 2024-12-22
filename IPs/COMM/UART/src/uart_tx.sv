@@ -2,40 +2,30 @@
 
 
 module uart_tx
-(
+  import uart_defs::*;
+  (
   // System reset and clock
   input logic clk,
-  input logic rts_n,
-
-  // TX FIFO input
-  input logic [7:0] tx_data,
-  input logic       tx_data_valid,
-  input logic       tx_data_ready,
+  input logic rst_n,
 
   // UART interface
   input  logic tck,
-  input  logic tx,
+  output logic tx,
   output logic rts_n,
   input  logic cts_n,
+
+  // TX FIFO input
+  input logic [7:0] txdata,
+  input logic       txdata_valid,
 
   // TX FIFO output
   output logic txfifo_full,
   output logic txfifo_empty,
-  output logic tx_irq
+
+  output TXIrqFlags_t tx_irq_flags
 );
 
-  // TX IRQ flags
-  // 0 : FIFO empty
-  // 1 : FIFO half empty
-  // 3 : Data sent
-
-  struct {
-    logic fifo_empty;
-    logic fifo_half_full;
-    logic data_sent;
-  } irq_flags_t;
-
-  enum bit[1:0] {
+  typedef enum bit[1:0] {
     IDLE = 0,
     SHIFT = 1,
     PARITY = 2,
@@ -44,27 +34,28 @@ module uart_tx
 
   State_t state, state_n;
 
-  logic [10:0] deq_data;
+  logic [7:0] deq_data;
   logic        deq_valid;
   logic        deq_ready;
   // 1 Start | 8 Data bits | 1 Parity | 1 Stop bits
-  logic [10:0] frame;
+  logic [10:0] frame, frame_n;
   logic        even;
-  logic [3:0]  cnt;
+  logic [3:0]  cnt, cnt_n;
   logic        frame_bit;
   
   fifo #(.data_size(8), .buffer_size(8)) fifo_i
   (
     .clk       (clk),
     .rst_n     (rst_n),
-    .enq_data  (tx_data),
-    .enq_valid (tx_data_valid),
-    .enq_ready (tx_data_ready),
+    .enq_data  (txdata),
+    .enq_valid (txdata_valid),
+    .enq_ready (),
     .deq_data  (deq_data),
     .deq_valid (deq_valid),
     .deq_ready (deq_ready),
-    .full      (tx_bus.full),
-    .empty     (tx_bus.empty)
+    .full      (txfifo_full),
+    .empty     (txfifo_empty),
+    .flush     (1'b0)
   );
 
   always_comb begin
@@ -76,24 +67,30 @@ module uart_tx
   end
 
   always_comb begin
+    state_n = state;
+
+    frame_n = frame;
+    cnt_n = cnt;
     frame_bit = 1'b1;
     rts_n = 1;
+    deq_ready = 1'b0;
+
     casez(state)
       IDLE : begin
         rts_n = 0;
         if(deq_valid && !cts_n) begin
-          cnt = 0;
-          frame = {1'b1, even, deq_data[7:0], 1'b0};
+          cnt_n = 0;
+          frame_n = {1'b1, even, deq_data[7:0], 1'b0};
           state_n = SHIFT;
         end
       end
       SHIFT : begin
         rts_n = 0;
         frame_bit = frame[0];
-        frame = {1'b0, fram[10:1]};
-        cnt = cnt + 1;
+        frame_n = {1'b0, frame[10:1]};
+        cnt_n = cnt + 1;
         deq_ready = 1;
-        if(cnt == 11) begin
+        if(cnt_n == 11) begin
           state_n = PARITY;
         end
       end
@@ -114,9 +111,6 @@ module uart_tx
     end
     tx <= frame_bit;
   end
-
-  // TODO
-  assign tx_irq = 1'b0;
 
 endmodule
 
