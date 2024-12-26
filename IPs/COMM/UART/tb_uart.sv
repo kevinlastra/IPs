@@ -29,38 +29,57 @@ module tb_uart
     .rx_irq   (rx_irq),
     .tx_irq   (tx_irq)
   );
+  
+  // DEBUG 
 
-  initial begin : uart_debug
-    // Init sigs
-    rx = 1;
-    cts_n = 1;
-    //bus.Init_slave();
+  logic [31:0] counter;
+  logic tck;
+  logic reseted;
 
-    $display("START");
-
-    //send_frame(8'b10101010, 1'b1);
-
-    $display("END SIMULATION");
-    $stop(1);
-    // 
+  always_comb begin
+    if(reseted) begin
+      bus.aw.addr = 32'h1_0000;
+      bus.aw_valid = 1;
+      bus.w.data = 2604;
+      bus.w_valid = 1;
+    end else begin
+      bus.aw.addr = 32'h1_0000;
+      bus.aw_valid = 0;
+      bus.w.data = 2604;
+      bus.w_valid = 0;
+    end
   end
 
-  task send_frame;
-    input logic [7:0] frame;
-    input logic parity;
-    begin
-      $display("Deb");
-      #5 rx = 0;
-      $display("start bit = %d", rx);
-      for(int i = 0; i < 8; i++) begin
-        #5 rx = frame[i];
-        $display("rx = %d", rx);
+  always_ff @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+      reseted <= 0;
+      counter <= 0;
+      tck <= 0;
+    end else begin
+      reseted <= 1;
+      counter <= counter + 1;
+      if(counter >= 1302) begin
+        tck <= !tck;
+        counter <= 0;
       end
-      #5 rx = parity;
-      $display("parity = %d", rx);
-      #5 rx = 1;
-      $display("stop = %d", rx);
     end
-  endtask
+  end
+
+  logic [99:0] shifter, shifter_n;
+
+  always_comb begin
+    shifter_n = shifter >> 1;
+    cts_n = 0;
+  end
+
+  always_ff @(posedge tck or negedge rst_n) begin
+    if(!rst_n) begin
+      rx <= 1;
+      shifter <= {{50{1'b1}}, 12'b100010100101, {38{1'b1}}};
+    end else begin
+      rx <= shifter_n[0];
+      shifter <= shifter_n;
+    end
+  end
   
 endmodule

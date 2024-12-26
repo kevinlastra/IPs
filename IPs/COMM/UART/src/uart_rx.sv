@@ -11,6 +11,8 @@ module uart_rx
   // UART interface
   input  logic tck,
   input  logic rx,
+  input  logic rx_rts_n,
+  output logic rx_cts_n,
 
   // RX FIFO output
   output logic [7:0] rxfifo_data,
@@ -23,7 +25,11 @@ module uart_rx
   // Wakeup system if uart receive a frame
   output logic       wakeup,
   
-  output RXIrqFlags_t rx_irq_flags
+  // Irq flags
+  output RXIrqFlags_t rx_irq_flags,
+
+  // Uart configuration reg
+  input Config_t uart_config
 );
 
   typedef enum bit[1:0] {
@@ -38,6 +44,7 @@ module uart_rx
   // 1 Start | 8 Data bits | 1 Parity | 1 Stop bits
   logic [7:0] frame_data, frame_data_n;
   logic       frame_valid;
+  logic       frame_ready;
 
   logic even, even_n;
 
@@ -53,36 +60,43 @@ module uart_rx
     error_parity = 1'b0;
     even_n = even;
     
-    casez(state)
-      IDLE : begin
-        if(!rx) begin
-          wakeup = 1'b1;
-          cnt_n = 0;
-          even_n = 1'b1;
-          frame_data_n = '0;
-          state_n = SHIFT;
-        end
-      end
-      SHIFT : begin
-        frame_data_n = {rx, frame_data[7:1]};
-        wakeup = 1'b1;
-        cnt_n = cnt + 1;
-        even_n = rx ? !even : even;
-        if(cnt == 8) begin
-          state_n = PARITY;
-        end
-      end
-      PARITY : begin
-        wakeup = 1'b1;
-        error_parity = rx == even;
-        frame_valid = 1'b1;
+    if((uart_config.mode == SIMPLEX && !uart_config.master) || 
+        uart_config.mode != SIMPLEX) begin
+          
+      // Flow control
+      rx_cts_n = !(!rx_rts_n & frame_ready); 
 
-        state_n = STOP;
-      end
-      STOP : begin
-        state_n = IDLE;
-      end
-    endcase
+      casez(state)
+        IDLE : begin
+          if(!rx) begin
+            wakeup = 1'b1;
+            cnt_n = 0;
+            even_n = 1'b1;
+            frame_data_n = '0;
+            state_n = SHIFT;
+          end
+        end
+        SHIFT : begin
+          frame_data_n = {rx, frame_data[7:1]};
+          wakeup = 1'b1;
+          cnt_n = cnt + 1;
+          even_n = rx ? !even : even;
+          if(cnt_n == 8) begin
+            state_n = PARITY;
+          end
+        end
+        PARITY : begin
+          wakeup = 1'b1;
+          error_parity = rx == even;
+          frame_valid = 1'b1;
+  
+          state_n = STOP;
+        end
+        STOP : begin
+          state_n = IDLE;
+        end
+      endcase
+    end
   end
 
   always_ff @( posedge tck or negedge rst_n) begin
@@ -105,13 +119,13 @@ module uart_rx
     .rst_n     (rst_n),
     .enq_data  (frame_data),
     .enq_valid (frame_valid),
-    .enq_ready (),
+    .enq_ready (frame_ready),
     .deq_data  (rxfifo_data),
     .deq_valid (rxfifo_valid),
     .deq_ready (rxfifo_ready),
     .full      (rxfifo_full),
     .empty     (rxfifo_empty),
-    .flush     (1'b0)
+    .flush     (uart_config.flush_rx)
   );
 
 endmodule

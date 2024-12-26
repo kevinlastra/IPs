@@ -11,8 +11,8 @@ module uart_tx
   // UART interface
   input  logic tck,
   output logic tx,
-  output logic rts_n,
-  input  logic cts_n,
+  output logic tx_rts_n,
+  input  logic tx_cts_n,
 
   // TX FIFO input
   input logic [7:0] txdata,
@@ -22,7 +22,11 @@ module uart_tx
   output logic txfifo_full,
   output logic txfifo_empty,
 
-  output TXIrqFlags_t tx_irq_flags
+  // Irq flags
+  output TXIrqFlags_t tx_irq_flags,
+
+  // Uart configuration reg
+  input Config_t uart_config
 );
 
   typedef enum bit[1:0] {
@@ -55,7 +59,7 @@ module uart_tx
     .deq_ready (deq_ready),
     .full      (txfifo_full),
     .empty     (txfifo_empty),
-    .flush     (1'b0)
+    .flush     (uart_config.flush_tx || (uart_config.mode == SIMPLEX && !uart_config.master))
   );
 
   always_comb begin
@@ -72,20 +76,20 @@ module uart_tx
     frame_n = frame;
     cnt_n = cnt;
     frame_bit = 1'b1;
-    rts_n = 1;
     deq_ready = 1'b0;
 
     casez(state)
       IDLE : begin
-        rts_n = 0;
-        if(deq_valid && !cts_n) begin
+        if(deq_valid) begin
           cnt_n = 0;
-          frame_n = {1'b1, even, deq_data[7:0], 1'b0};
-          state_n = SHIFT;
+          tx_rts_n = 0;
+          if(!tx_cts_n) begin
+            frame_n = {1'b1, even, deq_data[7:0], 1'b0};
+            state_n = SHIFT;
+          end
         end
       end
       SHIFT : begin
-        rts_n = 0;
         frame_bit = frame[0];
         frame_n = {1'b0, frame[10:1]};
         cnt_n = cnt + 1;
