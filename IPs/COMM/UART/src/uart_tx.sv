@@ -78,6 +78,8 @@ module uart_tx
     frame_bit = 1'b1;
     deq_ready = 1'b0;
 
+    tx_rts_n = 1;
+
     casez(state)
       IDLE : begin
         if(deq_valid) begin

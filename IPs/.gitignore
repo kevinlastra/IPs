@@ -1,0 +1,8 @@
+
+
+# Verilator
+obj_dir/
+
+# GTKWaves
+*.gtkw
+*.vcd

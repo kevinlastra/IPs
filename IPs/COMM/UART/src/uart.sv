@@ -1,12 +1,6 @@
 
 
 // UART implementation
-// Simplex
-// Master transmitter
-// 0: Receive
-// 1: Transmitte
-// 2: Ready to send
-// 3: Clear to send
 
 module uart
   import uart_defs::*;
@@ -21,8 +15,16 @@ module uart
     // UART interface
     input  logic rx,
     output logic tx,
-    output logic rts_n,
-    input  logic cts_n,
+`ifdef VERILATOR
+    input  logic rts_in_n,
+    output logic rts_out_n,
+
+    input  logic cts_in_n,
+    output logic cts_out_n,
+`else 
+    inout logic rts_n,
+    inout logic cts_n,
+`endif
 
     // System interface
     axi4.slave bus,
@@ -46,23 +48,26 @@ module uart
   logic        uart_rxdata_valid;
   logic        uart_rxdata_ready;
 
-  logic [31:0] uart_rxstatus;
-  logic [31:0] uart_txstatus;
-  logic [31:0] uart_status;
+  Config_t     uart_config;
 
   logic        rxfifo_full;
   logic        rxfifo_empty;
   logic        rx_wakeup;
+  logic [31:0] rx_status;
   RXIrqFlags_t rx_irq_flags;
   
   logic        txfifo_full;
   logic        txfifo_empty;
+  logic [31:0] tx_status;
   TXIrqFlags_t tx_irq_flags;
 
   logic        error_parity;
-  logic [1:0]  com_mode;
-  logic        rxmaster;
-  logic        txmaster;
+
+  logic        rx_cts_n;
+  logic        rx_rts_n;
+
+  logic        tx_cts_n;
+  logic        tx_rts_n;
 
   uart_reg #(.regmap(regmap)) reg_i
   (
@@ -74,12 +79,14 @@ module uart
     .uart_txdata_valid (uart_txdata_valid),
     .uart_rxirqmask    (uart_rxirqmask),
     .uart_txirqmask    (uart_txirqmask),
+    .uart_config       (uart_config),
     .uart_rxdata       (uart_rxdata),
     .uart_rxdata_valid (uart_rxdata_valid),
     .uart_rxdata_ready (uart_rxdata_ready),
-    .uart_rxstatus     (uart_rxstatus),
-    .uart_txstatus     (uart_txstatus),
-    .uart_status       (uart_status)
+    .uart_rxstatus     (rx_status),
+    .uart_rxirqflags   (rx_irq_flags),
+    .uart_txstatus     (tx_status),
+    .uart_txirqflags   (tx_irq_flags)
   );
   
   uart_rx rx_i 
@@ -88,6 +95,8 @@ module uart
     .rst_n            (rst_n),
     .tck              (tck),
     .rx               (rx),
+    .rx_rts_n         (rx_rts_n),
+    .rx_cts_n         (rx_cts_n),
     .rxfifo_data      (uart_rxdata),
     .rxfifo_valid     (uart_rxdata_valid),
     .rxfifo_ready     (uart_rxdata_ready),
@@ -95,7 +104,8 @@ module uart
     .rxfifo_empty     (rxfifo_empty),
     .error_parity     (error_parity),
     .wakeup           (wakeup),
-    .rx_irq_flags     (rx_irq_flags)
+    .rx_irq_flags     (rx_irq_flags),
+    .uart_config      (uart_config)
   );
 
   uart_tx tx_i 
@@ -104,13 +114,14 @@ module uart
     .rst_n            (rst_n),
     .tck              (tck),
     .tx               (tx),
-    .rts_n            (rts_n),
-    .cts_n            (cts_n),
+    .tx_rts_n         (tx_rts_n),
+    .tx_cts_n         (tx_cts_n),
     .txdata           (uart_txdata),
     .txdata_valid     (uart_txdata_valid),
     .txfifo_full      (txfifo_full),
     .txfifo_empty     (txfifo_empty),
-    .tx_irq_flags     (tx_irq_flags)
+    .tx_irq_flags     (tx_irq_flags),
+    .uart_config      (uart_config)
   );
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -131,11 +142,28 @@ module uart
 
   // R/TX status
   // [parity not equal, master transmitter, fifo full, fifo empty]
-  assign uart_rxstatus = {28'h0, error_parity, 1'b0, rxfifo_full, rxfifo_empty};
-  assign uart_txstatus = {28'h0,         1'b0, 1'b1, txfifo_full, txfifo_empty};
+  assign rx_status = {28'h0, error_parity, 1'b0, rxfifo_full, rxfifo_empty};
+  assign tx_status = {28'h0,         1'b0, 1'b1, txfifo_full, txfifo_empty};
 
-  // UART status
-  // [communication mode]
-  assign uart_status   = {30'h0,     SIMPLEX};
+`ifdef VERILATOR
+  always_comb begin
+    rts_out_n = 1'b1;
+    cts_out_n = 1'b1;
 
+    tx_cts_n = 1'b1;
+    rx_rts_n = 1'b1;
+
+    if(!tx_rts_n && rts_in_n) begin
+      rts_out_n = tx_rts_n;
+      tx_cts_n = cts_in_n;
+    end else if(!rts_in_n && tx_rts_n) begin
+      rx_rts_n = rts_in_n;
+      cts_out_n = rx_cts_n;
+    end
+  end
+`else
+  // TODO: add PLL to handle inout port
+  // ifdef VIVADO 
+  // ifdef CADENCE
+`endif
 endmodule

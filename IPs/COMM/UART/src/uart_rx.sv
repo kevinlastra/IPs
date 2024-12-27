@@ -60,6 +60,8 @@ module uart_rx
     error_parity = 1'b0;
     even_n = even;
     
+    rx_cts_n = 1;
+
     if((uart_config.mode == SIMPLEX && !uart_config.master) || 
         uart_config.mode != SIMPLEX) begin
           

@@ -8,8 +8,17 @@ module tb_uart
 
   logic rx;
   logic tx;
+
+`ifdef VERILATOR
+  logic rts_in_n;
+  logic rts_out_n;
+  logic cts_in_n;
+  logic cts_out_n;
+`else
   logic rts_n;
   logic cts_n;
+`endif
+
   logic wakeup;
   logic rx_irq;
   logic tx_irq;
@@ -22,8 +31,15 @@ module tb_uart
     .clk      (clk),
     .rx       (rx),
     .tx       (tx),
+`ifdef VERILATOR
+    .rts_in_n  (rts_in_n),
+    .rts_out_n (rts_out_n),
+    .cts_in_n  (cts_in_n),
+    .cts_out_n (cts_out_n),
+`else
     .rts_n    (rts_n),
     .cts_n    (cts_n),
+`endif
     .bus      (bus),
     .wakeup   (wakeup),
     .rx_irq   (rx_irq),
@@ -36,17 +52,33 @@ module tb_uart
   logic tck;
   logic reseted;
 
-  always_comb begin
-    if(reseted) begin
-      bus.aw.addr = 32'h1_0000;
-      bus.aw_valid = 1;
-      bus.w.data = 2604;
-      bus.w_valid = 1;
+  logic [31:0] conf_cnt;
+  always_ff @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+      bus.aw.addr <= '0;
+      bus.aw_valid <= 1'b0;
+      bus.w.data <= '0;
+      bus.w_valid <= 1'b0;
+      bus.b_ready <= 1'b0;
+      conf_cnt <= '0;
     end else begin
-      bus.aw.addr = 32'h1_0000;
-      bus.aw_valid = 0;
-      bus.w.data = 2604;
-      bus.w_valid = 0;
+      if(conf_cnt == 32'h0) begin
+        bus.aw.addr <= 32'h1_0000;
+        bus.aw_valid <= 0;
+        bus.w.data <= 2604;
+        bus.w_valid <= 0;
+
+        bus.b_ready <= 1'b1;
+        if(bus.b_valid == 1'b1)
+          conf_cnt <= 32'h1;
+      end else if(conf_cnt == 32'h1) begin
+        bus.aw.addr <= '0;
+        bus.aw_valid <= 1'b0;
+        bus.w.data <= '0;
+        bus.w_valid <= 1'b0;
+        bus.b_ready <= 1'b0;
+        conf_cnt <= 32'h1;
+      end
     end
   end
 
@@ -54,7 +86,7 @@ module tb_uart
     if(!rst_n) begin
       reseted <= 0;
       counter <= 0;
-      tck <= 0;
+      tck <= 1;
     end else begin
       reseted <= 1;
       counter <= counter + 1;
@@ -68,17 +100,27 @@ module tb_uart
   logic [99:0] shifter, shifter_n;
 
   always_comb begin
+    cts_in_n = 1'b1;
     shifter_n = shifter >> 1;
-    cts_n = 0;
   end
 
   always_ff @(posedge tck or negedge rst_n) begin
     if(!rst_n) begin
       rx <= 1;
       shifter <= {{50{1'b1}}, 12'b100010100101, {38{1'b1}}};
+`ifdef VERILATOR
+      rts_in_n <= 1'b1;
+`else
+      rts_n <= 1'b1;
+`endif
     end else begin
       rx <= shifter_n[0];
       shifter <= shifter_n;
+`ifdef VERILATOR
+      rts_in_n <= 1'b0;
+`else
+      rts_n <= 1'b0;
+`endif
     end
   end
   
