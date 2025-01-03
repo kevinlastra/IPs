@@ -12,9 +12,10 @@ REMOVE_LINT= -Wno-PINCONNECTEMPTY \
 PKGS = -I ../../BUS/AXI/axi4_pkg.sv
 
 SRCS = ../../BUS/AXI/axi4.sv \
-			 ../../UTIL/src/fifo.sv \
+			 ../../UTIL/FIFO/ASYNC/src/fifo_async.sv \
 			src/uart_defs.sv \
 			src/uart_reg.sv \
+			src/uart_flow_ctrl.sv \
 			src/uart_rx.sv \
 			src/uart_tx.sv \
 			src/uart.sv

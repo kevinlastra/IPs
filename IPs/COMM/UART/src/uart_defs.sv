@@ -47,12 +47,15 @@ package uart_defs;
   typedef struct packed {
     Mode_t mode;
     // If the Uart communication mode
-    // is SIMPLEX take into account this bit
+    // is SIMPLEX or HALFDUPLEX take this bit into account
+    // 1 - Master     : use only TX line
+    // 0 - Not master : use only RX line
     logic master;
     // Enable or disable rts and cts management
     logic flow_control;
     logic flush_rx;
     logic flush_tx;
   } Config_t;
+  
 endpackage
 

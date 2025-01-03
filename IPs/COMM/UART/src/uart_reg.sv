@@ -30,10 +30,7 @@ module uart_reg
     input logic        uart_rxdata_ready,
 
     input logic [31:0]  uart_rxstatus,
-    input RXIrqFlags_t  uart_rxirqflags,
-
-    input logic [31:0]  uart_txstatus,
-    input TXIrqFlags_t  uart_txirqflags
+    input logic [31:0]  uart_txstatus
   );
 
   typedef enum bit[1:0] 

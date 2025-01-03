@@ -15,16 +15,8 @@ module uart
     // UART interface
     input  logic rx,
     output logic tx,
-`ifdef VERILATOR
-    input  logic rts_in_n,
-    output logic rts_out_n,
-
-    input  logic cts_in_n,
-    output logic cts_out_n,
-`else 
-    inout logic rts_n,
-    inout logic cts_n,
-`endif
+    output logic rts_n,
+    input  logic cts_n,
 
     // System interface
     axi4.slave bus,
@@ -63,11 +55,15 @@ module uart
 
   logic        error_parity;
 
+  logic        rx_line;
   logic        rx_cts_n;
   logic        rx_rts_n;
+  logic        rx_enable;
 
+  logic        tx_line;
   logic        tx_cts_n;
   logic        tx_rts_n;
+  logic        tx_enable;
 
   uart_reg #(.regmap(regmap)) reg_i
   (
@@ -84,9 +80,7 @@ module uart
     .uart_rxdata_valid (uart_rxdata_valid),
     .uart_rxdata_ready (uart_rxdata_ready),
     .uart_rxstatus     (rx_status),
-    .uart_rxirqflags   (rx_irq_flags),
-    .uart_txstatus     (tx_status),
-    .uart_txirqflags   (tx_irq_flags)
+    .uart_txstatus     (tx_status)
   );
   
   uart_rx rx_i 
@@ -94,9 +88,10 @@ module uart
     .clk              (clk),
     .rst_n            (rst_n),
     .tck              (tck),
-    .rx               (rx),
+    .rx               (rx_line),
     .rx_rts_n         (rx_rts_n),
     .rx_cts_n         (rx_cts_n),
+    .rx_enable        (rx_enable),
     .rxfifo_data      (uart_rxdata),
     .rxfifo_valid     (uart_rxdata_valid),
     .rxfifo_ready     (uart_rxdata_ready),
@@ -113,9 +108,10 @@ module uart
     .clk              (clk),
     .rst_n            (rst_n),
     .tck              (tck),
-    .tx               (tx),
+    .tx               (tx_line),
     .tx_rts_n         (tx_rts_n),
     .tx_cts_n         (tx_cts_n),
+    .tx_enable        (tx_enable),
     .txdata           (uart_txdata),
     .txdata_valid     (uart_txdata_valid),
     .txfifo_full      (txfifo_full),
@@ -123,6 +119,36 @@ module uart
     .tx_irq_flags     (tx_irq_flags),
     .uart_config      (uart_config)
   );
+
+  uart_flow_ctrl uart_fc_i
+  (
+    .tck              (tck),
+    .rst_n            (rst_n),
+    .rts_n            (rts_n),
+    .cts_n            (cts_n),
+    .tx_rts_n         (tx_rts_n),
+    .tx_cts_n         (tx_cts_n),
+    .tx_enable        (tx_enable),
+    .rx_rts_n         (rx_rts_n),
+    .rx_cts_n         (rx_cts_n),
+    .rx_enable        (rx_enable),
+    .uart_config      (uart_config)
+  );
+
+  always_comb begin : data_ctrl
+    tx = 1;
+    rx_line = 1;
+    if(uart_config.mode == SIMPLEX ||
+       uart_config.mode == HALFDUPLEX) begin
+      if(uart_config.master)
+        tx = tx_line;
+      else
+        rx_line = rx;
+    end else if(uart_config.mode == FULLDUPLEX) begin
+      tx = tx_line;
+      rx_line = rx;
+    end
+  end
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
@@ -145,25 +171,4 @@ module uart
   assign rx_status = {28'h0, error_parity, 1'b0, rxfifo_full, rxfifo_empty};
   assign tx_status = {28'h0,         1'b0, 1'b1, txfifo_full, txfifo_empty};
 
-`ifdef VERILATOR
-  always_comb begin
-    rts_out_n = 1'b1;
-    cts_out_n = 1'b1;
-
-    tx_cts_n = 1'b1;
-    rx_rts_n = 1'b1;
-
-    if(!tx_rts_n && rts_in_n) begin
-      rts_out_n = tx_rts_n;
-      tx_cts_n = cts_in_n;
-    end else if(!rts_in_n && tx_rts_n) begin
-      rx_rts_n = rts_in_n;
-      cts_out_n = rx_cts_n;
-    end
-  end
-`else
-  // TODO: add PLL to handle inout port
-  // ifdef VIVADO 
-  // ifdef CADENCE
-`endif
 endmodule

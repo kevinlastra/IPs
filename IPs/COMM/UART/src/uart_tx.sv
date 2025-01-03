@@ -13,6 +13,7 @@ module uart_tx
   output logic tx,
   output logic tx_rts_n,
   input  logic tx_cts_n,
+  input  logic tx_enable,
 
   // TX FIFO input
   input logic [7:0] txdata,
@@ -47,13 +48,14 @@ module uart_tx
   logic [3:0]  cnt, cnt_n;
   logic        frame_bit;
   
-  fifo #(.data_size(8), .buffer_size(8)) fifo_i
+  fifo_async #(.data_size(8), .buffer_size(8)) fifo_i
   (
-    .clk       (clk),
     .rst_n     (rst_n),
+    .enq_clk   (clk),
     .enq_data  (txdata),
     .enq_valid (txdata_valid),
     .enq_ready (),
+    .deq_clk   (tck),
     .deq_data  (deq_data),
     .deq_valid (deq_valid),
     .deq_ready (deq_ready),
@@ -80,33 +82,35 @@ module uart_tx
 
     tx_rts_n = 1;
 
-    casez(state)
-      IDLE : begin
-        if(deq_valid) begin
-          cnt_n = 0;
-          tx_rts_n = 0;
-          if(!tx_cts_n) begin
-            frame_n = {1'b1, even, deq_data[7:0], 1'b0};
-            state_n = SHIFT;
+    if(uart_config.mode != FULLDUPLEX || tx_enable) begin
+      casez(state)
+        IDLE : begin
+          if(deq_valid) begin
+            cnt_n = 0;
+            tx_rts_n = 0;
+            if(!tx_cts_n) begin
+              frame_n = {1'b1, even, deq_data[7:0], 1'b0};
+              state_n = SHIFT;
+            end
           end
         end
-      end
-      SHIFT : begin
-        frame_bit = frame[0];
-        frame_n = {1'b0, frame[10:1]};
-        cnt_n = cnt + 1;
-        deq_ready = 1;
-        if(cnt_n == 11) begin
-          state_n = PARITY;
+        SHIFT : begin
+          frame_bit = frame[0];
+          frame_n = {1'b0, frame[10:1]};
+          cnt_n = cnt + 1;
+          deq_ready = 1;
+          if(cnt_n == 11) begin
+            state_n = PARITY;
+          end
         end
-      end
-      PARITY : begin
-        state_n = STOP;
-      end
-      STOP : begin
-        state_n = IDLE;
-      end
-    endcase
+        PARITY : begin
+          state_n = STOP;
+        end
+        STOP : begin
+          state_n = IDLE;
+        end
+      endcase
+    end
   end
 
   always_ff @(posedge tck or negedge rst_n) begin

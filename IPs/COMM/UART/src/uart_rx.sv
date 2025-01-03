@@ -13,6 +13,7 @@ module uart_rx
   input  logic rx,
   input  logic rx_rts_n,
   output logic rx_cts_n,
+  input  logic rx_enable,
 
   // RX FIFO output
   output logic [7:0] rxfifo_data,
@@ -32,6 +33,8 @@ module uart_rx
   input Config_t uart_config
 );
 
+  localparam fifo_buffer_size = 8;
+
   typedef enum bit[1:0] {
     IDLE = 0,
     SHIFT = 1,
@@ -40,6 +43,8 @@ module uart_rx
   } State_t;
 
   State_t state, state_n;
+
+  logic [$clog2(fifo_buffer_size)-1:0] fifo_cnt;
 
   // 1 Start | 8 Data bits | 1 Parity | 1 Stop bits
   logic [7:0] frame_data, frame_data_n;
@@ -62,10 +67,9 @@ module uart_rx
     
     rx_cts_n = 1;
 
-    if((uart_config.mode == SIMPLEX && !uart_config.master) || 
-        uart_config.mode != SIMPLEX) begin
+    if(uart_config.mode == FULLDUPLEX || rx_enable) begin
           
-      // Flow control
+      // RX flow control
       rx_cts_n = !(!rx_rts_n & frame_ready); 
 
       casez(state)
@@ -115,13 +119,14 @@ module uart_rx
     end
   end
 
-  fifo #(.data_size(8), .buffer_size(8)) fifo_i
+  fifo_async #(.data_size(8), .buffer_size(fifo_buffer_size)) fifo_i
   (
-    .clk       (clk),
     .rst_n     (rst_n),
+    .enq_clk   (tck),
     .enq_data  (frame_data),
     .enq_valid (frame_valid),
     .enq_ready (frame_ready),
+    .deq_clk   (clk),
     .deq_data  (rxfifo_data),
     .deq_valid (rxfifo_valid),
     .deq_ready (rxfifo_ready),

@@ -9,15 +9,8 @@ module tb_uart
   logic rx;
   logic tx;
 
-`ifdef VERILATOR
-  logic rts_in_n;
-  logic rts_out_n;
-  logic cts_in_n;
-  logic cts_out_n;
-`else
   logic rts_n;
   logic cts_n;
-`endif
 
   logic wakeup;
   logic rx_irq;
@@ -31,15 +24,8 @@ module tb_uart
     .clk      (clk),
     .rx       (rx),
     .tx       (tx),
-`ifdef VERILATOR
-    .rts_in_n  (rts_in_n),
-    .rts_out_n (rts_out_n),
-    .cts_in_n  (cts_in_n),
-    .cts_out_n (cts_out_n),
-`else
     .rts_n    (rts_n),
     .cts_n    (cts_n),
-`endif
     .bus      (bus),
     .wakeup   (wakeup),
     .rx_irq   (rx_irq),
@@ -100,7 +86,7 @@ module tb_uart
   logic [99:0] shifter, shifter_n;
 
   always_comb begin
-    cts_in_n = 1'b1;
+    cts_n = 1'b1;
     shifter_n = shifter >> 1;
   end
 
@@ -108,19 +94,9 @@ module tb_uart
     if(!rst_n) begin
       rx <= 1;
       shifter <= {{50{1'b1}}, 12'b100010100101, {38{1'b1}}};
-`ifdef VERILATOR
-      rts_in_n <= 1'b1;
-`else
-      rts_n <= 1'b1;
-`endif
     end else begin
       rx <= shifter_n[0];
       shifter <= shifter_n;
-`ifdef VERILATOR
-      rts_in_n <= 1'b0;
-`else
-      rts_n <= 1'b0;
-`endif
     end
   end
   
