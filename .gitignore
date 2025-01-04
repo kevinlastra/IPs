@@ -7,3 +7,12 @@ obj_dir/
 *.gtkw
 *.vcd
 tb
+
+# LaTeX
+
+*.aux
+*.fdb*
+*.fls
+*.syn*
+*.log
+*.toc
