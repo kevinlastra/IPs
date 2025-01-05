@@ -6,21 +6,11 @@ help me and you to gain deeper insights into the IPs you own, use, or wish to st
 
 ## Table of Contents
 
-- [Overview](#overview)
 - [Purpose](#purpose)
 - [Repository Structure](#repository-structure)
-- [How to Use](#how-to-use)
 - [Contributing](#contributing)
 - [License](#license)
 
-## Overview
-
-Intellectual Property (IP) refers to creations of the mind, such as inventions, literary and artistic works, designs, symbols, names, and images used in commerce. This repository is meant to organize and explore various types of IPs, including but not limited to:
-
-- Patents
-- Trademarks
-- Copyrights
-- Trade Secrets
 
 ## Purpose
 
