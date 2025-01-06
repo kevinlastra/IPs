@@ -1,5 +1,6 @@
 \documentclass[12pt]{article}
 
+\usepackage{hyperref}
 \usepackage{graphicx}
 \graphicspath{{./img/}}
 
@@ -78,19 +79,22 @@ The general formula for calculating the baud rate is:
 \subsubsection{Data frame structure}
 A UART data frame typically consists of: \\
 
-\begin{tabular}{|p{3cm}|p{6cm}|p{3.5cm}|}
-  \hline
-  \textbf{Range name} & \textbf{Description} & \textbf{Implementation bit length} \\
-  \hline
-  Start bit & Signals the beginning of data transmission & 1 \\
-  \hline
-  Data bits & The actual data being sent & 5 - 9 \\
-  \hline
-  Parity & Used for error checking & 0 - 1 \\
-  \hline
-  Stop bit & Signals the end of the data transmission & 1 - 2 \\
-  \hline
-\end{tabular}
+\begin{table}[h]
+  \centering
+  \begin{tabular}{|p{3cm}|p{6cm}|p{3.5cm}|}
+    \hline
+    \textbf{Range name} & \textbf{Description} & \textbf{Implementation bit length} \\
+    \hline
+    Start bit & Signals the beginning of data transmission & 1 \\
+    \hline
+    Data bits & The actual data being sent & 5 - 9 \\
+    \hline
+    Parity & Used for error checking & 0 - 1 \\
+    \hline
+    Stop bit & Signals the end of the data transmission & 1 - 2 \\
+    \hline
+  \end{tabular}
+\end{table}
 
 \subsection{Advantages and limitations}
 Advantages:
@@ -113,10 +117,84 @@ limitations:
 \end{enumerate}
 
 \section{Implementation}
-
+\begin{figure}[h]
+  \centering
+  \includegraphics[scale=0.6]{UART_IMPL_DIAGRAM.drawio.png}
+  \caption{Implementation diagram}
+\end{figure}
 \subsection{Design}
 \subsection{Interface}
+\subsubsection{UART}
+The UART interface includes the basic two wires for data transmission and reception
+\textbf{rx} and \textbf{tx}.\\
+In addition to the basic lines, the UART interface includes two control flow lines:
+\begin{enumerate}
+  \item RTS\_N \textbf{(Ready to Send)}: Signals that the device is ready to send data.
+  \item CTS\_N \textbf{(Clear to Send)}: Indicate that the receiving device is ready 
+        to accept data.
+\end{enumerate}
+\textbf{Why use cts\_n and rts\_n?}\\~\\
+The flow control solve two principal issues:
+\begin{enumerate}
+  \item Overflow, a fast transmitter could overwhelm a slower receiver, leading to 
+        data loss or corruption
+  \item Collision, when two devices attempt to transmit data simultaneously, it can 
+        result in garbled communication or corrupted data.
+\end{enumerate}
+Without proper flow control, these issues can severely impact communication reliability.
+The control flow wires solve this by coordinating the readiness of both devices:
+\begin{enumerate}
+  \item The transmitter checks \textbf{cts\_n} to ensure the receiver is ready before sending 
+        data.
+  \item The receiver asserts \textbf{rts\_n} when it is ready to receive more data, allowing 
+        the transmitter to proceed.
+\end{enumerate}
+This approach is especially useful in systems with devices of varying processing
+speeds or in applications where reliability is critical, such as industrial 
+communication systems or high-throughput embedded designs.
+\subsubsection{System}
+On the system side, the UART interface is connected to the system using the following
+components:\\~\\
+\textbf{AXI4 bus}\\~\\
+The UART control and configuration are managed through an AXI4 bus interface, a 
+widely used protocol in system-on-chip (SoC) designs. The AXI4 bus allows the system
+to:\\
+\begin{enumerate}
+  \item Configure UART parameters.
+  \item Monitor UART status registers for errors, activity, or flow control states.
+  \item Enable or disable interrupts for data transmission and reception.
+\end{enumerate}
+
+\textbf{IRQ lines for RX and TX}\\~\\
+To optimize system efficiency, the UART module includes two dedicated interrupt
+wires.\\~\\
+\textbf{Wakeup line}\\~\\
+The wake-up line is used to bring the system out of a low-power or sleep mode when 
+activity is detected on the UART interface.
 \subsection{Registers}
 \subsection{Interrupt request (IRQ)}
 \subsection{Low power}
+
+\section{Versioning}
+This manual follows a structured versioning system to ensure
+clarity and traceability of updates. The version number is 
+formatted as vX.Y.Z, where:
+\begin{enumerate}
+  \item \textbf{X} - major revisions, such as significant updates to 
+            content or structure.
+  \item \textbf{Y} - minor revisions, such as additions or updates 
+            to specific sections.
+  \item \textbf{Z} - minor edits, such as corrections to typos, 
+            formatting, or small clarifications.
+\end{enumerate}
+\subsection{History}
+\begin{tabular}{|p{1.5cm}|p{1.5cm}|p{2.5cm}|p{7cm}|}
+  \hline
+  Version & Date & Author & Description \\
+  \hline
+  v1.0.0 & 0 & Kevin Lastra & Initial release of the UART Implemenation Reference \\
+  \hline
+\end{tabular}
+\section{Glosary}
+\section{References}
 \end{document}
