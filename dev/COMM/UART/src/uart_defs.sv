@@ -2,20 +2,16 @@
 
 package uart_defs;
 
-  // Uart memory map
-  localparam DIVIDER_ADR       = 12'h000;
-  localparam RXDATA_ADR        = 12'h004;
-  localparam RXSTATUS_ADR      = 12'h008;
-  localparam RXIRQMASK_ADR     = 12'h00C;
-  localparam TXDATA_ADR        = 12'h010;
-  localparam TXSTATUS_ADR      = 12'h014;
-  localparam TXIRQMASK_ADR     = 12'h018;
-  localparam UART_STATUS_ADR   = 12'h01C;
-  localparam VERSION_ADR       = 12'h020;
-
-  localparam UART_STATUS_W_MASK = 32'h0000_0003;
-  localparam UART_RXMASK_W_MASK = 32'h0000_003F;
-  localparam UART_TXMASK_W_MASK = 32'h0000_0007;
+  // Uart memory map {sel: 1b, adr: 12b}
+  localparam DIVIDER       = {1'b1, 12'h000};
+  localparam RXDATA        = {1'b1, 12'h004};
+  localparam RXSTATUS      = {1'b1, 12'h008};
+  localparam RXIRQMASK     = {1'b1, 12'h00C};
+  localparam TXDATA        = {1'b1, 12'h010};
+  localparam TXSTATUS      = {1'b1, 12'h014};
+  localparam TXIRQMASK     = {1'b1, 12'h018};
+  localparam STATUS        = {1'b1, 12'h01C};
+  localparam VERSION       = {1'b1, 12'h020};
 
   localparam VERSION_MAJOR   = 16'h1;
   localparam VERSION_MINOR   = 8'h0;
@@ -56,6 +52,7 @@ package uart_defs;
     logic flush_rx;
     logic flush_tx;
   } Config_t;
-  
+
+
 endpackage
 

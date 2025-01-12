@@ -8,29 +8,33 @@ module uart_rx
   input logic clk,
   input logic rst_n,
 
-  // UART interface
   input  logic tck,
-  input  logic rx,
-  input  logic rx_rts_n,
-  output logic rx_cts_n,
-  input  logic rx_enable,
+
+  // UART interface
+
+  input  logic rx_i,
+  input  logic rx_rts_n_i,
+  output logic rx_cts_n_o,
+
+  input  logic rx_enable_i,
 
   // RX FIFO output
-  output logic [7:0] rxfifo_data,
-  output logic       rxfifo_valid,
-  input  logic       rxfifo_ready,
-  output logic       rxfifo_full,
-  output logic       rxfifo_empty,
-  output logic       error_parity,
+  output logic [7:0] rx_d_o,
+  output logic       rx_d_valid_o,
+  input  logic       rx_d_ready_i,
+  output logic       rx_full_o,
+  output logic       rx_empty_o,
+  output logic       parity_error_o,
+  output logic       frame_len_error_o,
 
   // Wakeup system if uart receive a frame
-  output logic       wakeup,
+  output logic       wakeup_o,
   
   // Irq flags
-  output RXIrqFlags_t rx_irq_flags,
+  output RXIrqFlags_t rx_irq_flags_o,
 
   // Uart configuration reg
-  input Config_t uart_config
+  input Config_t uart_config_i
 );
 
   localparam fifo_buffer_size = 8;
@@ -42,97 +46,100 @@ module uart_rx
     STOP = 3
   } State_t;
 
-  State_t state, state_n;
+  State_t state, state_q;
 
   logic [$clog2(fifo_buffer_size)-1:0] fifo_cnt;
 
   // 1 Start | 8 Data bits | 1 Parity | 1 Stop bits
-  logic [7:0] frame_data, frame_data_n;
+  logic [7:0] frame_data;
+  logic [7:0] frame_data_q;
   logic       frame_valid;
   logic       frame_ready;
 
-  logic even, even_n;
+  logic       even_q;
+  logic       even;
 
-  logic [3:0] cnt, cnt_n;
+  logic [7:0] cnt;
+  logic [7:0] cnt_q;
+
+  // RX flow control
+  assign rx_cts_n_o = (uart_config_i.mode == FULLDUPLEX || rx_enable_i) & rx_rts_n_i & frame_ready;
 
   always_comb begin
-    state_n = state;
+    state = state_q;
 
-    frame_data_n = frame_data;
-    cnt_n = cnt;
-    wakeup = 1'b0;
+    frame_data = frame_data_q;
+    cnt = cnt_q;
+    wakeup_o = 1'b0;
     frame_valid = 1'b0;
-    error_parity = 1'b0;
-    even_n = even;
-    
-    rx_cts_n = 1;
+    parity_error_o = 1'b0;
+    frame_len_error_o = 1'b0;
+    even = even_q;
 
-    if(uart_config.mode == FULLDUPLEX || rx_enable) begin
-          
-      // RX flow control
-      rx_cts_n = !(!rx_rts_n & frame_ready); 
+    case(state_q)
+      IDLE : begin
+        if((uart_config_i.mode == FULLDUPLEX || rx_enable_i) & !rx_i) begin
+          wakeup_o = 1'b1;
+          cnt = 8'h1;
+          even = 1'b1;
+          frame_data = '0;
+          state = SHIFT;
+        end
+      end
+      SHIFT : begin
+        frame_data = {rx_i, frame_data_q[7:1]};
+        wakeup_o = 1'b1;
+        cnt = {cnt[7:1], 1'b0};
+        even = rx_i ^ even_q;
+        if(cnt[7]) begin
+          state = PARITY;
+        end
+      end
+      PARITY : begin
+        wakeup_o = 1'b1;
+        parity_error_o = rx_i & even_q;
+        frame_valid = 1'b1;
 
-      casez(state)
-        IDLE : begin
-          if(!rx) begin
-            wakeup = 1'b1;
-            cnt_n = 0;
-            even_n = 1'b1;
-            frame_data_n = '0;
-            state_n = SHIFT;
-          end
-        end
-        SHIFT : begin
-          frame_data_n = {rx, frame_data[7:1]};
-          wakeup = 1'b1;
-          cnt_n = cnt + 1;
-          even_n = rx ? !even : even;
-          if(cnt_n == 8) begin
-            state_n = PARITY;
-          end
-        end
-        PARITY : begin
-          wakeup = 1'b1;
-          error_parity = rx == even;
-          frame_valid = 1'b1;
-  
-          state_n = STOP;
-        end
-        STOP : begin
-          state_n = IDLE;
-        end
-      endcase
-    end
+        state = IDLE;
+      end
+      STOP : begin
+        frame_len_error_o = !rx_i;
+        state = IDLE;
+      end
+    endcase
   end
 
   always_ff @( posedge tck or negedge rst_n) begin
     if(!rst_n) begin
-      state <= IDLE;
-      frame_data <= '0;
-      cnt <= '0;
-      even <= 1'b0;
+      state_q <= IDLE;
+      frame_data_q <= '0;
+      cnt_q <= '0;
+      even_q <= 1'b0;
     end else begin
-      state <= state_n;
-      frame_data <= frame_data_n;
-      cnt <= cnt_n;
-      even <= even_n;
+      state_q <= state;
+      frame_data_q <= frame_data;
+      cnt_q <= cnt;
+      even_q <= even;
     end
   end
 
   fifo_async #(.data_size(8), .buffer_size(fifo_buffer_size)) fifo_i
   (
     .rst_n     (rst_n),
+    // Enqueue
     .enq_clk   (tck),
-    .enq_data  (frame_data),
+    .enq_data  (frame_data_q),
     .enq_valid (frame_valid),
     .enq_ready (frame_ready),
+    // Dequeue
     .deq_clk   (clk),
-    .deq_data  (rxfifo_data),
-    .deq_valid (rxfifo_valid),
-    .deq_ready (rxfifo_ready),
-    .full      (rxfifo_full),
-    .empty     (rxfifo_empty),
-    .flush     (uart_config.flush_rx)
+    .deq_data  (rx_d_o),
+    .deq_valid (rx_d_valid_o),
+    .deq_ready (rx_d_ready_i),
+    // Status
+    .full      (rx_full_o),
+    .empty     (rx_empty_o),
+    .flush     (uart_config_i.flush_rx)
   );
 
 endmodule
