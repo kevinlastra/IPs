@@ -80,11 +80,30 @@ module uart
 
   TXIrqFlags_t tx_irq_flags;
 
+  // Reset Resync
+  // Metastability handling
+
+  logic        rst_ff0;
+  logic        rst_ff1;
+  logic        rst_resync;
+
+  always_ff @(posedge clk or negedge rst_n) begin : reset_resync
+    if(!rst_n)begin
+      rst_ff0    <= 0;
+      rst_ffn    <= 0;
+      rst_resync <= 0;
+    end else begin
+      rst_ff0    <= 1;
+      rst_ff1    <= rst_ff0;
+      rst_resync <= rst_ff1;
+    end
+  end
+
   // UART registers
   uart_reg #(.regmap(regmap)) reg_inst
   (
     .clk             (clk),
-    .rst_n           (rst_n),
+    .rst_n           (rst_resync),
     .bus             (bus),
     .divider_q_o     (uart_divider),
     .rxirqmask_q_o   (uart_rxirqmask),
@@ -103,7 +122,7 @@ module uart
   uart_rx rx_inst
   (
     .clk               (clk),
-    .rst_n             (rst_n),
+    .rst_n             (rst_resync),
     .tck               (tck),
     .rx_i              (rx_line),
     .rx_rts_n_i        (rx_rts_n),
@@ -125,7 +144,7 @@ module uart
   uart_tx tx_inst
   (
     .clk            (clk),
-    .rst_n          (rst_n),
+    .rst_n          (rst_resync),
     .tck            (tck),
     .tx_q_o         (tx_line),
     .tx_rts_n_o     (tx_rts_n),
@@ -143,7 +162,7 @@ module uart
   uart_flow_ctrl uart_fc_inst
   (
     .tck           (tck),
-    .rst_n         (rst_n),
+    .rst_n         (rst_resync),
     .rts_n_o       (rts_n),
     .cts_n_i       (cts_n),
     .tx_rts_n_i    (tx_rts_n),
@@ -156,8 +175,8 @@ module uart
   );
 
   // TCK generator
-  always_ff @(posedge clk or negedge rst_n) begin
-    if(!rst_n) begin
+  always_ff @(posedge clk or negedge rst_resync) begin
+    if(!rst_resync) begin
       counter <= 0;
       tck <= 0;
     end else begin
