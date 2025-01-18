@@ -39,6 +39,8 @@ module uart_flow_ctrl
                        (uart_config_i.mode != HALFDUPLEX & uart_config_i.mode != SIMPLEX);
 
   always_comb begin
+    state = state_q;
+
     rts_n_o = 1;
     tx_cts_n_o = 1;
     rx_rts_n_o = 1;
@@ -50,19 +52,19 @@ module uart_flow_ctrl
       FC_IDLE : begin
         if(uart_config_i.mode == FULLDUPLEX |
            uart_config_i.mode == HALFDUPLEX) begin
-          if(!cts_n_i) begin
+          if(~cts_n_i) begin
             // Distant TX trying to communicate
             // with local RX
             state = FC_DIST;
-          end else if(tx_rts_n_i) begin
+          end else if(~tx_rts_n_i) begin
             // Local TX trying to communicate
             // with Distant RX  
             state = FC_LOCAL;
           end
         end else if(uart_config_i.mode == SIMPLEX) begin
-          if(uart_config_i.master & tx_rts_n_i) begin
+          if(uart_config_i.master & ~tx_rts_n_i) begin
             state = FC_LOCAL;
-          end else if(!uart_config_i.master & !cts_n_i) begin
+          end else if(~uart_config_i.master & ~cts_n_i) begin
             state = FC_DIST;
           end
         end
@@ -72,7 +74,7 @@ module uart_flow_ctrl
 
         rx_rts_n_o = cts_n_i;
         rts_n_o = rx_cts_n_i;
-        if(!cts_n_i)
+        if(cts_n_i)
           state = FC_IDLE;
       end
       FC_LOCAL : begin
@@ -80,7 +82,7 @@ module uart_flow_ctrl
 
         rts_n_o = tx_rts_n_i;
         tx_cts_n_o = cts_n_i;
-        if(!tx_rts_n_i)
+        if(tx_rts_n_i)
           state = FC_IDLE;
       end
       default : begin

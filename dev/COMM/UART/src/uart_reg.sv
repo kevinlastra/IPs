@@ -53,7 +53,6 @@ module uart_reg
   logic [7:0]            tx_d_q;
 
   logic [31:0]           bus_rdata;
-  logic [31:0]           bus_addr;
   logic [bus.idlen-1:0]  bus_id;
   XRESP_t                bus_w_resp;
   XRESP_t                bus_r_resp;
@@ -70,12 +69,14 @@ module uart_reg
   always_comb begin
     bus_w_resp = OKAY;
 
+    tx_d_valid_o = 0;
+
     case({wsel, bus.aw.addr[11:0]})
       DIVIDER : begin
         divider = bus.w.data;
       end
       TXDATA : begin
-        tx_d_o = bus.w.data[7:0];
+        tx_d_o = bus.w.data[7:0]; 
         tx_d_valid_o = 1;
       end
       RXIRQMASK : begin
@@ -132,18 +133,26 @@ module uart_reg
   always_comb begin
     state_q = state;
 
-    bus_id = bus.ar.id;
-    bus_addr = bus.aw.addr;
+    bus.ar_ready = 0;
+    bus.aw_ready = 0;
+    bus.w_ready = 0;
+
+    bus.r_valid = 0;
+    bus.b_valid = 0;
 
     case(state)
       IDLE : begin
         if(bus.aw_valid && bus.w_valid) begin
           bus.aw_ready = 1;
           bus.w_ready = 1;
+
+          bus_id = bus.aw.id;
           
           state_q = BRESP;
         end else if(bus.ar_valid) begin
           bus.ar_ready = 1;
+
+          bus_id = bus.ar.id;
           
           state_q = RRESP;
         end

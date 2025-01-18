@@ -57,8 +57,7 @@ package uart_defs;
 
   typedef enum bit[1:0] {
     TX_IDLE = 0,
-    TX_SHIFT = 1,
-    TX_PARITY = 2
+    TX_SHIFT = 1
   } TXState_t;
 
   typedef enum bit[1:0] {

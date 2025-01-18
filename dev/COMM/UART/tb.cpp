@@ -4,9 +4,97 @@
 #include <verilated_vcd_c.h>
 #include "obj_dir/Vtb_uart.h"
 
-#define MAX_TIME 2000000
+#define MAX_TIME 8000000
 
 vluint64_t sim_time = 0;
+
+bool tck = 0;
+int tck_cnt = 0;
+bool posedge = 0;
+
+// Frame
+bool frame[10];
+bool frame_start;
+int frame_cnt = 0;
+
+// RX
+int rx_cnt;
+// Least significant first
+int rx_frame0[5][11] = {{0,0,0,0,1,0,0,1,0,1,1},  // H
+                        {0,1,0,1,0,0,0,1,0,0,1},  // E 
+                        {0,0,0,1,1,0,0,1,0,0,1},  // L
+                        {0,0,0,1,1,0,0,1,0,0,1},  // L
+                        {0,1,1,1,1,0,0,1,0,0,1}}; // O
+bool rx_val = 1;
+
+void tx_eval(bool tx)
+{
+  int c;
+  int pow;
+  int even = 0;
+  
+  frame_start = (!tx | frame_start);
+
+  if(frame_start){
+    frame[frame_cnt] = tx;
+    frame_cnt += 1;
+    if(frame_cnt == 9)
+    {
+      pow = 1;
+      c = 0;
+      for(int i = 0; i < 8; i++){
+        printf("%d",frame[i]);
+        c += frame[i]*pow;
+        pow = pow*2;
+        even = frame[i] ^ even;
+      }
+      printf("\nTX : \"%c\"\n",c);
+      if(even==frame[8])
+        printf("Frame ERROR : parity bit unmatched\n");
+      frame_cnt = 0;
+      frame_start = 0;
+    }
+  }
+}
+int f_idx = 0;
+int i_idx = 0;
+bool rx_eval()
+{
+  bool res = rx_frame0[f_idx][i_idx];
+  i_idx += 1;
+  if(i_idx == 11)
+  {
+    i_idx = 0;
+    f_idx += 1;
+    if(f_idx == 5)
+      f_idx = 0;
+  }
+  return res;
+}
+void tb_uart(Vtb_uart* tb)
+{
+  tb->rx = rx_val;
+
+  tck_cnt = tck_cnt + 1;
+  if(tck_cnt >= 1302) {
+    tck = !tck;
+    tck_cnt = 0;
+    if(tck) {
+      // Posedge
+      // Transmitte
+      //tb->cts_n = 0;
+      //if(!tb->rts_n) {
+      //  rx_val = rx_eval();  
+      //}
+
+      // Receive
+      if(!tb->rts_n) {
+        tb->cts_n = 0;
+        tx_eval(tb->tx);
+      }
+    }
+  }
+}
 
 int main()
 {
@@ -19,6 +107,7 @@ int main()
     // Init
     tb->clk ^= 1;
     tb->rst_n = 1;
+    tb->cts_n = 1;
     tb->eval();
     m_trace->dump(sim_time);
     sim_time++;
@@ -38,6 +127,8 @@ int main()
     {
         tb->clk ^= 1;
         tb->rst_n = 1;
+        if(tb->clk)
+          tb_uart(tb);
         tb->eval();
         m_trace->dump(sim_time);
         sim_time++;

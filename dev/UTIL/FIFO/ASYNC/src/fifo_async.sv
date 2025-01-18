@@ -58,7 +58,7 @@ end else if (buffer_size > 1) begin : nsize_buffer
   logic [buffer_size-1:0] rd_ptr;
 
   always_ff @(posedge enq_clk) begin
-    if(enq_valid && !full) begin
+    if(enq_valid & ~full) begin
       for(int i = 0; i < buffer_size; i++) begin
         if(wr_ptr[i]) begin
           data[i] <= enq_data;
@@ -68,10 +68,10 @@ end else if (buffer_size > 1) begin : nsize_buffer
   end
 
   always_ff @(posedge enq_clk or negedge rst_n) begin
-    if(!rst_n) begin
+    if(~rst_n) begin
       wr_ptr <= 1;
     end if(!flush) begin 
-      if(enq_valid && !full) begin
+      if(enq_valid & ~full) begin
         wr_ptr <= (wr_ptr << 1 == '0) ? (buffer_size)'(1) : wr_ptr << 1;
       end
     end if(flush) begin
@@ -79,11 +79,11 @@ end else if (buffer_size > 1) begin : nsize_buffer
     end
   end
 
-    always_ff @(posedge deq_clk or negedge rst_n) begin
-    if(!rst_n) begin
+  always_ff @(posedge deq_clk or negedge rst_n) begin
+    if(~rst_n) begin
       rd_ptr <= 1;
-    end if(!flush) begin 
-      if(deq_ready && !empty) begin
+    end if(~flush) begin 
+      if(deq_ready & ~empty) begin
         rd_ptr <= (rd_ptr << 1 == '0) ? (buffer_size)'(1) : rd_ptr << 1;
       end
     end if(flush) begin

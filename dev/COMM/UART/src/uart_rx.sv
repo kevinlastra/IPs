@@ -82,15 +82,15 @@ module uart_rx
       RX_SHIFT : begin
         frame_data = {rx_i, frame_data_q[7:1]};
         wakeup_o = 1'b1;
-        cnt = {cnt[7:1], 1'b0};
+        cnt = {cnt_q[6:0], 1'b0};
         even = rx_i ^ even_q;
-        if(cnt[7]) begin
+        if(cnt_q[7]) begin
           state = RX_PARITY;
         end
       end
       RX_PARITY : begin
         wakeup_o = 1'b1;
-        parity_error_o = rx_i & even_q;
+        parity_error_o = rx_i & even_q;  // sync parity_error to tck same for wakeup
         frame_valid = 1'b1;
 
         state = RX_STOP;

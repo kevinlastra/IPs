@@ -82,7 +82,7 @@ module uart_tx
 
     case(state_q)
       TX_IDLE : begin
-        if((uart_config_i.mode != FULLDUPLEX || tx_enable_i) && deq_valid) begin
+        if((uart_config_i.mode == FULLDUPLEX || tx_enable_i) && deq_valid) begin
           cnt = 1;
           tx_rts_n_o = 0;
           if(!tx_cts_n_i) begin
@@ -98,12 +98,8 @@ module uart_tx
         cnt = {cnt_q[9:0], 1'b0};
         deq_ready = 1;
         if(cnt[10]) begin
-          state = TX_PARITY;
+          state = TX_IDLE;
         end
-      end
-      TX_PARITY : begin
-        frame_bit = even;
-        state = TX_IDLE;
       end
       default : begin
         state = TX_IDLE;

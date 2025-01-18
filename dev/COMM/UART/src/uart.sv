@@ -88,7 +88,7 @@ module uart
   logic        rst_resync;
 
   always_ff @(posedge clk or negedge rst_n) begin : reset_resync
-    if(!rst_n)begin
+    if(~rst_n) begin
       rst_ff0    <= 0;
       rst_ff1    <= 0;
       rst_resync <= 0;
@@ -175,18 +175,13 @@ module uart
   );
 
   // TCK generator
-  always_ff @(posedge clk or negedge rst_resync) begin
-    if(!rst_resync) begin
+  always_ff @(posedge clk) begin
+    if(counter >= (uart_divider/2)) begin
+      tck <= !tck;
       counter <= 0;
-      tck <= 0;
     end else begin
-      if(counter >= (uart_divider/2)) begin
-        tck <= !tck;
-        counter <= 0;
-      end else begin
-        tck <= tck;
-        counter <= counter + 1; 
-      end
+      tck <= tck;
+      counter <= counter + 1; 
     end
   end
   
