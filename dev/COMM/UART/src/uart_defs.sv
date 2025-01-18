@@ -53,6 +53,27 @@ package uart_defs;
     logic flush_tx;
   } Config_t;
 
+  // States machines
+
+  typedef enum bit[1:0] {
+    TX_IDLE = 0,
+    TX_SHIFT = 1,
+    TX_PARITY = 2
+  } TXState_t;
+
+  typedef enum bit[1:0] {
+    RX_IDLE   = 0,
+    RX_SHIFT  = 1,
+    RX_PARITY = 2,
+    RX_STOP   = 3
+  } RXState_t;
+
+  typedef enum bit[1:0] 
+  {  
+    FC_IDLE = 0,
+    FC_DIST = 1,
+    FC_LOCAL = 2
+  } FCState_t;
 
 endpackage
 

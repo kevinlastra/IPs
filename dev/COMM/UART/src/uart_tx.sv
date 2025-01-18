@@ -31,13 +31,7 @@ module uart_tx
   input Config_t uart_config_i
 );
 
-  typedef enum bit[1:0] {
-    IDLE = 0,
-    SHIFT = 1,
-    PARITY = 2
-  } State_t;
-
-  State_t    state, state_q;
+  TXState_t    state, state_q;
 
   logic [7:0]  deq_data;
   logic        deq_valid;
@@ -87,39 +81,39 @@ module uart_tx
     tx_rts_n_o = 1;
 
     case(state_q)
-      IDLE : begin
+      TX_IDLE : begin
         if((uart_config_i.mode != FULLDUPLEX || tx_enable_i) && deq_valid) begin
           cnt = 1;
           tx_rts_n_o = 0;
           if(!tx_cts_n_i) begin
             frame_bit = 1'b0;
             frame = {1'b1, even, deq_data[7:0], 1'b0};
-            state = SHIFT;
+            state = TX_SHIFT;
           end
         end
       end
-      SHIFT : begin
+      TX_SHIFT : begin
         frame_bit = frame_q[0];
         frame = {1'b0, frame_q[10:1]};
         cnt = {cnt_q[9:0], 1'b0};
         deq_ready = 1;
         if(cnt[10]) begin
-          state = PARITY;
+          state = TX_PARITY;
         end
       end
-      PARITY : begin
+      TX_PARITY : begin
         frame_bit = even;
-        state = IDLE;
+        state = TX_IDLE;
       end
       default : begin
-        state = IDLE;
+        state = TX_IDLE;
       end
     endcase
   end
 
   always_ff @(posedge tck or negedge rst_n) begin
     if(!rst_n) begin
-      state_q <= IDLE;
+      state_q <= TX_IDLE;
       cnt_q <= 11'b0;
       tx_q_o <= 1'b1;
       frame_q <= 11'b0;

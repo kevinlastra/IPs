@@ -39,14 +39,7 @@ module uart_rx
 
   localparam fifo_buffer_size = 8;
 
-  typedef enum bit[1:0] {
-    IDLE = 0,
-    SHIFT = 1,
-    PARITY = 2,
-    STOP = 3
-  } State_t;
-
-  State_t state, state_q;
+  RXState_t state, state_q;
 
   logic [$clog2(fifo_buffer_size)-1:0] fifo_cnt;
 
@@ -77,41 +70,41 @@ module uart_rx
     even = even_q;
 
     case(state_q)
-      IDLE : begin
-        if((uart_config_i.mode == FULLDUPLEX || rx_enable_i) & !rx_i) begin
+      RX_IDLE : begin
+        if((uart_config_i.mode == FULLDUPLEX || rx_enable_i) & ~rx_i) begin
           wakeup_o = 1'b1;
           cnt = 8'h1;
           even = 1'b1;
           frame_data = '0;
-          state = SHIFT;
+          state = RX_SHIFT;
         end
       end
-      SHIFT : begin
+      RX_SHIFT : begin
         frame_data = {rx_i, frame_data_q[7:1]};
         wakeup_o = 1'b1;
         cnt = {cnt[7:1], 1'b0};
         even = rx_i ^ even_q;
         if(cnt[7]) begin
-          state = PARITY;
+          state = RX_PARITY;
         end
       end
-      PARITY : begin
+      RX_PARITY : begin
         wakeup_o = 1'b1;
         parity_error_o = rx_i & even_q;
         frame_valid = 1'b1;
 
-        state = IDLE;
+        state = RX_STOP;
       end
-      STOP : begin
-        frame_len_error_o = !rx_i;
-        state = IDLE;
+      RX_STOP : begin
+        frame_len_error_o = ~rx_i;
+        state = RX_IDLE;
       end
     endcase
   end
 
   always_ff @( posedge tck or negedge rst_n) begin
     if(!rst_n) begin
-      state_q <= IDLE;
+      state_q <= RX_IDLE;
       frame_data_q <= '0;
       cnt_q <= '0;
       even_q <= 1'b0;

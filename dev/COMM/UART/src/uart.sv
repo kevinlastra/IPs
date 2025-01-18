@@ -90,7 +90,7 @@ module uart
   always_ff @(posedge clk or negedge rst_n) begin : reset_resync
     if(!rst_n)begin
       rst_ff0    <= 0;
-      rst_ffn    <= 0;
+      rst_ff1    <= 0;
       rst_resync <= 0;
     end else begin
       rst_ff0    <= 1;
@@ -193,8 +193,8 @@ module uart
   assign isfullduplex = uart_config.mode == FULLDUPLEX;
 
   // Data Control
-  assign tx      = ((!isfullduplex & uart_config.master) | isfullduplex) ? tx_line : 1'b1;
-  assign rx_line = (!(isfullduplex | uart_config.master) | isfullduplex) ? rx      : 1'b1;
+  assign tx      = ((~isfullduplex & uart_config.master) | isfullduplex) ? tx_line : 1'b1;
+  assign rx_line = (~(isfullduplex | uart_config.master) | isfullduplex) ? rx      : 1'b1;
 
   assign rx_irq = |(rx_irq_flags & uart_rxirqmask[$bits(RXIrqFlags_t)-1:0]);
   assign tx_irq = |(tx_irq_flags & uart_txirqmask[$bits(TXIrqFlags_t)-1:0]);
