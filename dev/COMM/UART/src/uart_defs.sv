@@ -18,7 +18,7 @@ package uart_defs;
   localparam VERSION_PATCHES = 8'h0;
 
   // Modes of communication
-  typedef enum bit[1:0] 
+  typedef enum bit[1:0]
   {
     SIMPLEX    = 2'b00,
     HALFDUPLEX = 2'b01,
@@ -54,30 +54,30 @@ package uart_defs;
 
   // States machines
 
-  typedef enum bit[1:0] 
-  {  
-    REG_IDLE = 0,
-    REG_RRESP = 1,
-    REG_BRESP = 2
+  typedef enum bit[1:0]
+  {
+    REG_IDLE    = 2'd0,
+    REG_RRESP   = 2'd1,
+    REG_BRESP   = 2'd2
   } REGState_t;
 
   typedef enum bit[1:0] {
-    TX_IDLE = 0,
-    TX_SHIFT = 1
+    TX_IDLE   = 2'd0,
+    TX_SHIFT  = 2'd1
   } TXState_t;
 
   typedef enum bit[1:0] {
-    RX_IDLE   = 0,
-    RX_SHIFT  = 1,
-    RX_PARITY = 2,
-    RX_STOP   = 3
+    RX_IDLE   = 2'd0,
+    RX_SHIFT  = 2'd1,
+    RX_PARITY = 2'd2,
+    RX_STOP   = 2'd3
   } RXState_t;
 
-  typedef enum bit[1:0] 
-  {  
-    FC_IDLE = 0,
-    FC_DIST = 1,
-    FC_LOCAL = 2
+  typedef enum bit[1:0]
+  {
+    FC_IDLE   = 2'd0,
+    FC_DIST   = 2'd1,
+    FC_LOCAL  = 2'd2
   } FCState_t;
 
 endpackage

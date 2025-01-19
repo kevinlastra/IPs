@@ -6,8 +6,8 @@ REMOVE_LINT= -Wno-PINCONNECTEMPTY \
 					 	 -Wno-UNUSEDSIGNAL \
 						 -Wno-UNDRIVEN \
 						 -Wno-UNUSEDPARAM
-						 
-#-Wno-STMTDLY -Wno-UNUSED -Wno-ASSIGNIN 
+
+#-Wno-STMTDLY -Wno-UNUSED -Wno-ASSIGNIN
 
 PKGS = -I ../../BUS/AXI/axi4_pkg.sv
 
