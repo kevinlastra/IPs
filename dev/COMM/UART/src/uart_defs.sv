@@ -27,13 +27,12 @@ package uart_defs;
 
   typedef struct packed {
     logic fifo_empty;
-    logic fifo_half_full;
-    logic data_sent;
+    logic fifo_full;
   } TXIrqFlags_t;
 
   typedef struct packed {
-    logic data_ready;
-    logic fifo_half_full;
+    logic data_valid;
+    logic fifo_empty;
     logic fifo_full;
     logic parity_error;
     logic framing_error;
@@ -54,6 +53,13 @@ package uart_defs;
   } Config_t;
 
   // States machines
+
+  typedef enum bit[1:0] 
+  {  
+    REG_IDLE = 0,
+    REG_RRESP = 1,
+    REG_BRESP = 2
+  } REGState_t;
 
   typedef enum bit[1:0] {
     TX_IDLE = 0,

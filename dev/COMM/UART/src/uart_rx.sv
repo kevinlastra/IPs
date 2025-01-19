@@ -22,16 +22,16 @@ module uart_rx
   output logic [7:0] rx_d_o,
   output logic       rx_d_valid_o,
   input  logic       rx_d_ready_i,
+
   output logic       rx_full_o,
   output logic       rx_empty_o,
+
   output logic       parity_error_o,
   output logic       frame_len_error_o,
+  output logic       overrun_error_o,
 
   // Wakeup system if uart receive a frame
   output logic       wakeup_o,
-  
-  // Irq flags
-  output RXIrqFlags_t rx_irq_flags_o,
 
   // Uart configuration reg
   input Config_t uart_config_i
@@ -135,5 +135,7 @@ module uart_rx
     .flush     (uart_config_i.flush_rx)
   );
 
+  assign overrun_error_o = rx_full_o & frame_valid;
+  
 endmodule
 

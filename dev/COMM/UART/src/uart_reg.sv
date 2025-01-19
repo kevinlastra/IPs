@@ -37,15 +37,8 @@ module uart_reg
     input logic [31:0]  tx_status_i
   );
 
-  typedef enum bit[1:0] 
-  {  
-    IDLE = 0,
-    RRESP = 1,
-    BRESP = 2
-  } State_t;
-
-  State_t               state;
-  State_t               state_q;
+  REGState_t             state;
+  REGState_t             state_q;
 
   logic                  wsel;
   logic                  rsel;
@@ -83,7 +76,7 @@ module uart_reg
         rxirqmask = {26'b0, bus.w.data[$size(RXIrqFlags_t)-1:0]};
       end
       TXIRQMASK : begin
-        txirqmask = {29'b0, bus.w.data[$size(TXIrqFlags_t)-1:0]};
+        txirqmask = {30'b0, bus.w.data[$size(TXIrqFlags_t)-1:0]};
       end
       STATUS : begin
         uart_config = bus.w.data[$size(Config_t)-1:0];
@@ -141,40 +134,40 @@ module uart_reg
     bus.b_valid = 0;
 
     case(state)
-      IDLE : begin
+      REG_IDLE : begin
         if(bus.aw_valid && bus.w_valid) begin
           bus.aw_ready = 1;
           bus.w_ready = 1;
 
           bus_id = bus.aw.id;
           
-          state_q = BRESP;
+          state_q = REG_BRESP;
         end else if(bus.ar_valid) begin
           bus.ar_ready = 1;
 
           bus_id = bus.ar.id;
           
-          state_q = RRESP;
+          state_q = REG_RRESP;
         end
       end 
-      RRESP : begin
+      REG_RRESP : begin
         bus.r_valid = 1;
         bus.r.last  = 1;
         bus.r.data  = bus_rdata;
         bus.r.resp  = bus_r_resp;
         bus.r.id    = bus_id;
         if(bus.r_ready)
-          state_q = IDLE;
+          state_q = REG_IDLE;
       end
-      BRESP : begin
+      REG_BRESP : begin
         bus.b_valid = 1;
         bus.b.resp  = bus_w_resp;
         bus.b.id    = bus_id;
         if(bus.b_ready)
-          state_q = IDLE;
+          state_q = REG_IDLE;
       end
       default: 
-        state_q = IDLE;
+        state_q = REG_IDLE;
     endcase
   end
 
@@ -186,7 +179,7 @@ module uart_reg
       txirqmask_q_o <= '0;
       uart_config_q_o <= '0;
 
-      state <= IDLE;
+      state <= REG_IDLE;
     end else begin
       divider_q_o <= divider;
       rxirqmask_q_o <= rxirqmask;

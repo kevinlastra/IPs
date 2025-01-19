@@ -24,9 +24,6 @@ module uart_tx
   output logic      tx_full_o,
   output logic      tx_empty_o,
 
-  // Irq flags
-  output TXIrqFlags_t tx_irq_flags_o,
-
   // Uart configuration reg
   input Config_t uart_config_i
 );

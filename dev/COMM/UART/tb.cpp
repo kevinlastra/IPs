@@ -49,7 +49,7 @@ void tx_eval(bool tx)
         even = frame[i] ^ even;
       }
       printf("\nTX : \"%c\"\n",c);
-      if(even==frame[8])
+      if(even!=frame[8])
         printf("Frame ERROR : parity bit unmatched\n");
       frame_cnt = 0;
       frame_start = 0;

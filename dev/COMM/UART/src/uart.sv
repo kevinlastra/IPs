@@ -62,6 +62,7 @@ module uart
 
   logic        parity_error;
   logic        frame_len_error;
+  logic        overrun_error;
   
   // TX interface
   logic        tx_line;
@@ -135,8 +136,8 @@ module uart
     .rx_empty_o        (rxfifo_empty),
     .parity_error_o    (parity_error),
     .frame_len_error_o (frame_len_error),
+    .overrun_error_o   (overrun_error),
     .wakeup_o          (wakeup),
-    .rx_irq_flags_o    (rx_irq_flags),
     .uart_config_i     (uart_config)
   );
 
@@ -154,7 +155,6 @@ module uart
     .tx_d_valid_i   (tx_data_valid),
     .tx_full_o      (txfifo_full),
     .tx_empty_o     (txfifo_empty),
-    .tx_irq_flags_o (tx_irq_flags),
     .uart_config_i  (uart_config)
   ); 
 
@@ -186,6 +186,17 @@ module uart
   end
   
   assign isfullduplex = uart_config.mode == FULLDUPLEX;
+
+  // IRQS
+  assign rx_irq_flags.data_valid    = rx_data_valid;
+  assign rx_irq_flags.fifo_empty    = rxfifo_empty;
+  assign rx_irq_flags.fifo_full     = rxfifo_full;
+  assign rx_irq_flags.parity_error  = parity_error;
+  assign rx_irq_flags.framing_error = frame_len_error;
+  assign rx_irq_flags.overrun_error = overrun_error;
+
+  assign tx_irq_flags.fifo_empty   = txfifo_empty;
+  assign tx_irq_flags.fifo_full    = txfifo_full;
 
   // Data Control
   assign tx      = ((~isfullduplex & uart_config.master) | isfullduplex) ? tx_line : 1'b1;
