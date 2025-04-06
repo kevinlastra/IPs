@@ -20,7 +20,7 @@ module tb_uart
 
   axi4 #(.alen(32), .xlen(32), .idlen(5)) bus(.clk(clk));
 
-  uart #(.regmap(32'h1_0000)) uart0_i
+  uart #(.regmap(32'h1_0000)) uart_i
   (
     .rst_n    (rst_n),
     .clk      (clk),
@@ -33,8 +33,8 @@ module tb_uart
     .rx_irq   (rx_irq),
     .tx_irq   (tx_irq)
   );
-  
-  // DEBUG 
+
+  // DEBUG
 
 
   typedef struct packed {
