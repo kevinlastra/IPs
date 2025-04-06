@@ -33,7 +33,7 @@ import uart_defs::*;
   output      logic       wakeup_o,
 
   // Uart configuration reg
-  input      Config_t    uart_config_i,
+  input      Config_t    uart_config_i
 );
 
 localparam fifo_buffer_size = 8;

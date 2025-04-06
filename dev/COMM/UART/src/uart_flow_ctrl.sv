@@ -21,7 +21,7 @@ module uart_flow_ctrl
   input       logic    rx_cts_n_i,
   output      logic    rx_enable_o,
 
-  input       Config_t uart_config_i,
+  input       Config_t uart_config_i
 );
 
 FCState_t state_q, state;
