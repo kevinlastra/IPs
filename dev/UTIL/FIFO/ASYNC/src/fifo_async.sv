@@ -55,7 +55,10 @@ end else if (buffer_size > 1) begin : nsize_buffer
 
   logic [data_size-1:0] data[buffer_size];
   logic [buffer_size-1:0] wr_ptr;
+  logic [buffer_size-1:0] wr_ptr_shf;
   logic [buffer_size-1:0] rd_ptr;
+
+  assign wr_ptr_shf = wr_ptr << 1;
 
   always_ff @(posedge enq_clk) begin
     if(enq_valid & ~full) begin
@@ -72,7 +75,7 @@ end else if (buffer_size > 1) begin : nsize_buffer
       wr_ptr <= 1;
     end if(!flush) begin 
       if(enq_valid & ~full) begin
-        wr_ptr <= (wr_ptr << 1 == '0) ? (buffer_size)'(1) : wr_ptr << 1;
+        wr_ptr <= (wr_ptr_shf == '0) ? (buffer_size)'(1) : wr_ptr_shf;
       end
     end if(flush) begin
       wr_ptr <= 1;
@@ -104,7 +107,7 @@ end else if (buffer_size > 1) begin : nsize_buffer
   end
 
   always_comb begin
-    full = (wr_ptr << 1 == 0)? ('1 == rd_ptr) : (wr_ptr << 1 == rd_ptr);
+    full = (wr_ptr_shf == 0) ? (1 == rd_ptr) : (wr_ptr_shf == rd_ptr);
     empty = (wr_ptr == rd_ptr);
   end
 

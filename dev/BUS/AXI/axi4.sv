@@ -11,7 +11,7 @@ interface axi4
   )
   (input logic clk);
 
-  typedef struct {
+  typedef struct packed {
     // 
     logic bufferable; 
     // 
@@ -22,7 +22,7 @@ interface axi4
     logic WA;
   } AXCache_t;
 
-  typedef struct {
+  typedef struct packed {
     // 1: priviledged
     // 0: unpriviledged
     logic priviledge; 
@@ -35,7 +35,7 @@ interface axi4
   } AXProt_t;
   
   
-  typedef struct {
+  typedef struct packed {
     logic [alen-1:0]  addr;
     AXSize_t          size;
     AXBurst_t         burst;
@@ -48,19 +48,19 @@ interface axi4
     logic [3:0]       region;
   } AX_t;
 
-  typedef struct {
+  typedef struct packed {
     logic                last;
     logic [xlen-1:0]     data;
     logic [(xlen/8)-1:0] strb;
     logic [idlen-1:0]    id;
   } W_t;
 
-  typedef struct {
+  typedef struct packed {
     XRESP_t           resp;
     logic [idlen-1:0] id;
   } B_t;
 
-  typedef struct {
+  typedef struct packed {
     logic             last;
     logic [xlen-1:0]  data;
     XRESP_t           resp;

@@ -36,19 +36,20 @@ void tx_eval(bool tx)
   frame_start = (!tx | frame_start);
 
   if(frame_start){
+    //printf("TX: %d\n", tx);
     frame[frame_cnt] = tx;
     frame_cnt += 1;
-    if(frame_cnt == 9)
+    if(frame_cnt == 10)
     {
       pow = 1;
       c = 0;
-      for(int i = 0; i < 8; i++){
-        printf("%d",frame[i]);
+      for(int i = 1; i < 10; i++){
+        //printf("%d",frame[i]);
         c += frame[i]*pow;
         pow = pow*2;
         even = frame[i] ^ even;
       }
-      printf("\nTX : \"%c\"\n",c);
+      printf("TX : \"%c\"\n",c);
       if(even!=frame[8])
         printf("Frame ERROR : parity bit unmatched\n");
       frame_cnt = 0;

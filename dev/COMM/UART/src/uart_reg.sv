@@ -37,7 +37,7 @@ module uart_reg
     input logic [31:0]  tx_status_i
   );
 
-  REGState_t             state;
+  REGState_t             state_d;
   REGState_t             state_q;
 
   logic                  wsel;
@@ -46,7 +46,7 @@ module uart_reg
   logic [7:0]            tx_d_q;
 
   logic [31:0]           bus_rdata;
-  logic [bus.idlen-1:0]  bus_id;
+  logic [bus.idlen-1:0]  bus_id_d, bus_id_q;
   XRESP_t                bus_w_resp;
   XRESP_t                bus_r_resp;
 
@@ -124,30 +124,38 @@ module uart_reg
   end
 
   always_comb begin
-    state_q = state;
+    state_d = state_q;
+
+    bus_id_d = bus_id_q;
 
     bus.ar_ready = 0;
     bus.aw_ready = 0;
     bus.w_ready = 0;
 
+    bus.r       = '0;
     bus.r_valid = 0;
+
+    bus.b       = '0;
     bus.b_valid = 0;
 
-    case(state)
+    case(state_q)
+      REG_RST : begin
+        state_d = REG_IDLE;
+      end
       REG_IDLE : begin
         if(bus.aw_valid && bus.w_valid) begin
           bus.aw_ready = 1;
           bus.w_ready = 1;
 
-          bus_id = bus.aw.id;
+          bus_id_d = bus.aw.id;
           
-          state_q = REG_BRESP;
+          state_d = REG_BRESP;
         end else if(bus.ar_valid) begin
           bus.ar_ready = 1;
 
-          bus_id = bus.ar.id;
+          bus_id_d = bus.ar.id;
           
-          state_q = REG_RRESP;
+          state_d = REG_RRESP;
         end
       end 
       REG_RRESP : begin
@@ -155,19 +163,19 @@ module uart_reg
         bus.r.last  = 1;
         bus.r.data  = bus_rdata;
         bus.r.resp  = bus_r_resp;
-        bus.r.id    = bus_id;
+        bus.r.id    = bus_id_q;
         if(bus.r_ready)
-          state_q = REG_IDLE;
+          state_d = REG_IDLE;
       end
       REG_BRESP : begin
         bus.b_valid = 1;
         bus.b.resp  = bus_w_resp;
-        bus.b.id    = bus_id;
+        bus.b.id    = bus_id_q;
         if(bus.b_ready)
-          state_q = REG_IDLE;
+          state_d = REG_IDLE;
       end
       default: 
-        state_q = REG_IDLE;
+        state_d = REG_IDLE;
     endcase
   end
 
@@ -178,18 +186,20 @@ module uart_reg
       rxirqmask_q_o <= '0;
       txirqmask_q_o <= '0;
       uart_config_q_o <= '0;
+      bus_id_q <= 0;
 
-      state <= REG_IDLE;
+      state_q <= REG_RST;
     end else begin
       divider_q_o <= divider;
       rxirqmask_q_o <= rxirqmask;
       txirqmask_q_o <= txirqmask;
       uart_config_q_o <= uart_config;
+      bus_id_q <= bus_id_d;
 
       if(tx_d_valid_o)
         tx_d_q  <= tx_d_o;
 
-      state <= state_q;
+      state_q <= state_d;
     end
   end
 

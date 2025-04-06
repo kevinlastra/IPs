@@ -55,10 +55,11 @@ package uart_defs;
   // States machines
 
   typedef enum bit[1:0] 
-  {  
-    REG_IDLE = 0,
-    REG_RRESP = 1,
-    REG_BRESP = 2
+  { 
+    REG_RST  = 0,
+    REG_IDLE = 1,
+    REG_RRESP = 2,
+    REG_BRESP = 3
   } REGState_t;
 
   typedef enum bit[1:0] {
