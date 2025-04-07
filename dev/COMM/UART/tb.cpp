@@ -74,6 +74,11 @@ bool rx_eval()
 }
 void tb_uart(Vtb_uart* tb)
 {
+  // Receiver can always receive data
+  // Test bench is faster than the simulation
+  tb->cts_n = 0;
+
+  // Send data
   tb->rx = rx_val;
 
   tck_cnt = tck_cnt + 1;
@@ -83,14 +88,10 @@ void tb_uart(Vtb_uart* tb)
     if(tck) {
       // Posedge
       // Transmitte
-      //tb->cts_n = 0;
-      //if(!tb->rts_n) {
-      //  rx_val = rx_eval();  
-      //}
+      //rx_val = rx_eval();  
 
       // Receive
       if(!tb->rts_n) {
-        tb->cts_n = 0;
         tx_eval(tb->tx);
       }
     }

@@ -67,6 +67,8 @@ module tb_uart
                      {32'h1_0010, 1'b1, 32'h64},
                      {32'h1_0014, 1'b0, 32'h0}};
 
+  logic [4:0] cnt_d, cnt_q;
+
   typedef enum bit[2:0] 
   {  
     RST    = 'b000,
@@ -77,7 +79,6 @@ module tb_uart
   } State_t;
 
   State_t state_d, state_q;
-  logic [4:0] cnt_d, cnt_q;
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
@@ -131,7 +132,7 @@ module tb_uart
               state_d = RRESP;
             end
           end
-        end    
+        end 
       end 
       WREADY : begin
         bus.w.data = tab[cnt_q].data;
