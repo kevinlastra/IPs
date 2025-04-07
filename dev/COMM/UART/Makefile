@@ -25,3 +25,9 @@ SRCS = ../../BUS/AXI/axi4.sv \
 verilator:
 	verilator $(FLAGS) $(PKGS) $(SRCS) $(REMOVE_LINT) tb_uart.sv --top-module tb_uart -exe tb.cpp -DVERILATOR=1
 	mv ./obj_dir/Vtb_uart ./tb
+
+clean: 
+	rm *.gtkw
+	rm *.vcd
+	rm tb
+	rm -rf obj_dir
