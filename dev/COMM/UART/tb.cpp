@@ -87,13 +87,15 @@ void tb_uart(Vtb_uart* tb)
     tck_cnt = 0;
     if(tck) {
       // Posedge
-      // Transmitte
-      //rx_val = rx_eval();  
 
-      // Receive
+      // Transmitte : only if the UART is "clear to send"
       if(!tb->rts_n) {
-        tx_eval(tb->tx);
+        rx_val = rx_eval();
+      } else {
+        rx_val = 1;
       }
+      // Receive
+      tx_eval(tb->tx);
     }
   }
 }
