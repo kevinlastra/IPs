@@ -1,7 +1,15 @@
+// ============================================================
+// Project      : UART IP
+// Author       : Kevin Lastra
+// Description  : UART (Universal Asynchronous Receiver/Transmitter) 
+// 
+// Revision     : 1.0.0
+// 
+// License      : MIT License
+// ============================================================
 
-
-  // divider = clk_in / clk_out   
-  //       ex: 25 Mhz(25000000) / 9600 = 2604
+// divider = clk_in / clk_out   
+//       ex: 25 Mhz(25000000) / 9600 = 2604
 
 module uart_reg
   import axi4_pkg::*;
@@ -24,17 +32,19 @@ module uart_reg
     output Config_t     uart_config_q_o,
 
     // TX interface
+    output logic        tx_enable_o,
     output logic [7:0]  tx_d_o,
     output logic        tx_d_valid_o,
 
     // RX interface
+    output logic        rx_enable_o,
     input  logic [7:0]  rx_d_i,
     input  logic        rx_d_valid_i,
     output logic        rx_d_ready_o,
 
     // RX & TX status
-    input logic [31:0]  rx_status_i,
-    input logic [31:0]  tx_status_i
+    input RXStatus_t    rx_status_i,
+    input TXStatus_t    tx_status_i
   );
 
   REGState_t             state_d;
@@ -73,13 +83,13 @@ module uart_reg
         tx_d_valid_o = 1;
       end
       RXIRQMASK : begin
-        rxirqmask = {26'b0, bus.w.data[$size(RXIrqFlags_t)-1:0]};
+        rxirqmask = bus.w.data;
       end
       TXIRQMASK : begin
-        txirqmask = {30'b0, bus.w.data[$size(TXIrqFlags_t)-1:0]};
+        txirqmask = bus.w.data;
       end
       STATUS : begin
-        uart_config = bus.w.data[$size(Config_t)-1:0];
+        uart_config = $bits(Config_t)'(bus.w.data);
       end
       default: 
         bus_w_resp = SLVERR;
@@ -98,7 +108,7 @@ module uart_reg
         bus_rdata = {24'b0, rx_d_i};
       end
       RXSTATUS : begin
-        bus_rdata = rx_status_i;
+        bus_rdata = 32'(rx_status_i);
       end
       RXIRQMASK : begin
         bus_rdata = rxirqmask_q_o;
@@ -107,7 +117,7 @@ module uart_reg
         bus_rdata = {24'h0, tx_d_q};
       end
       TXSTATUS : begin
-        bus_rdata = tx_status_i;
+        bus_rdata = 32'(tx_status_i);
       end
       TXIRQMASK : begin
         bus_rdata = txirqmask_q_o;
@@ -181,27 +191,31 @@ module uart_reg
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
-      divider_q_o <= '0;
-      tx_d_q  <= '0;
-      rxirqmask_q_o <= '0;
-      txirqmask_q_o <= '0;
+      divider_q_o     <= '0;
+      rxirqmask_q_o   <= '0;
+      txirqmask_q_o   <= '0;
       uart_config_q_o <= '0;
-      bus_id_q <= 0;
+      bus_id_q        <= 0;
 
       state_q <= REG_RST;
     end else begin
-      divider_q_o <= divider;
-      rxirqmask_q_o <= rxirqmask;
-      txirqmask_q_o <= txirqmask;
+      bus_id_q        <= bus_id_d;
+      divider_q_o     <= divider;
+      rxirqmask_q_o   <= rxirqmask;
+      txirqmask_q_o   <= txirqmask;
       uart_config_q_o <= uart_config;
-      bus_id_q <= bus_id_d;
-
-      if(tx_d_valid_o)
-        tx_d_q  <= tx_d_o;
 
       state_q <= state_d;
     end
   end
+
+  assign tx_enable_o = uart_config_q_o.mode == FULLDUPLEX 
+                     | uart_config_q_o.mode == HALFDUPLEX
+                     | (uart_config_q_o.mode == SIMPLEX & uart_config_q_o.master);
+
+  assign rx_enable_o = uart_config_q_o.mode == FULLDUPLEX 
+                     | uart_config_q_o.mode == HALFDUPLEX
+                     | (uart_config_q_o.mode == SIMPLEX & ~uart_config_q_o.master);                     
 
 endmodule
 

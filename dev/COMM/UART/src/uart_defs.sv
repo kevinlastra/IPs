@@ -1,4 +1,12 @@
-
+// ============================================================
+// Project      : UART IP
+// Author       : Kevin Lastra
+// Description  : UART (Universal Asynchronous Receiver/Transmitter) 
+// 
+// Revision     : 1.0.0
+// 
+// License      : MIT License
+// ============================================================
 
 package uart_defs;
 
@@ -26,18 +34,18 @@ package uart_defs;
   } Mode_t;
 
   typedef struct packed {
+    logic overflow_error;
     logic fifo_empty;
     logic fifo_full;
-  } TXIrqFlags_t;
+  } TXStatus_t;
 
   typedef struct packed {
-    logic data_valid;
-    logic fifo_empty;
-    logic fifo_full;
-    logic parity_error;
     logic framing_error;
+    logic parity_error;
     logic overrun_error;
-  } RXIrqFlags_t;
+    logic fifo_full;
+    logic fifo_empty;
+  } RXStatus_t;
 
   typedef struct packed {
     Mode_t mode;

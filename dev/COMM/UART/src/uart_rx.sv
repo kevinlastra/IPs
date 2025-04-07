@@ -1,39 +1,41 @@
-
-
+// ============================================================
+// Project      : UART IP
+// Author       : Kevin Lastra
+// Description  : UART (Universal Asynchronous Receiver/Transmitter) 
+// 
+// Revision     : 1.0.0
+// 
+// License      : MIT License
+// ============================================================
 
 module uart_rx
 import uart_defs::*;
 (
   // System reset and clock
-  input       logic       clk,
-  input       logic       rst_n,
+  input       logic        clk,
+  input       logic        rst_n,
 
-  input       logic       tck,
+  input       logic        tck,
 
+  input       logic        rx_enable_i,
+  
   // UART interface
-  input       logic       rx_i,
-  input       logic       rx_rts_n_i,
-  output      logic       rx_cts_n_o,
-
-  input       logic       rx_enable_i,
+  input       logic        rx_i,
+  output      logic        rts_n_o,
 
   // RX FIFO output
-  output      logic [7:0] rx_d_o,
-  output      logic       rx_d_valid_o,
-  input       logic       rx_d_ready_i,
+  output      logic [7:0]  rx_d_o,
+  output      logic        rx_d_valid_o,
+  input       logic        rx_d_ready_i,
 
-  output      logic       rx_full_o,
-  output      logic       rx_empty_o,
-
-  output      logic       parity_error_o,
-  output      logic       frame_len_error_o,
-  output      logic       overrun_error_o,
+  // Status
+  output      RXStatus_t   rx_status_o,
 
   // Wakeup system if uart receive a frame
-  output      logic       wakeup_o,
+  output      logic        wakeup_o,
 
   // Uart configuration reg
-  input      Config_t    uart_config_i
+  input       Config_t     uart_config_i
 );
 
 localparam fifo_buffer_size = 8;
@@ -54,9 +56,16 @@ logic       even;
 logic [7:0] cnt;
 logic [7:0] cnt_q;
 
-// RX flow control
-assign rx_cts_n_o = (uart_config_i.mode == FULLDUPLEX || rx_enable_i) & rx_rts_n_i & frame_ready;
+// FIFO
+logic fifo_empty;
+logic fifo_full;
 
+// Errors
+logic frame_len_error;
+logic parity_error;
+logic overrun_error;
+
+// RX flow control
 always_comb begin
   state = state_q;
 
@@ -64,13 +73,15 @@ always_comb begin
   cnt = cnt_q;
   wakeup_o = 1'b0;
   frame_valid = 1'b0;
-  parity_error_o = 1'b0;
-  frame_len_error_o = 1'b0;
+
+  parity_error = 1'b0;
+  frame_len_error = 1'b0;
+
   even = even_q;
 
   case(state_q)
     RX_IDLE : begin
-      if((uart_config_i.mode == FULLDUPLEX || rx_enable_i) & ~rx_i) begin
+      if(rx_enable_i & ~rx_i) begin
         wakeup_o = 1'b1;
         cnt = 8'h1;
         even = 1'b1;
@@ -89,17 +100,19 @@ always_comb begin
     end
     RX_PARITY : begin
       wakeup_o = 1'b1;
-      parity_error_o = rx_i & even_q;  // sync parity_error to tck same for wakeup
+      parity_error = rx_i & even_q;  // sync parity_error to tck same for wakeup
       frame_valid = 1'b1;
 
       state = RX_STOP;
     end
     RX_STOP : begin
-      frame_len_error_o = ~rx_i;
+      frame_len_error = ~rx_i;
       state = RX_IDLE;
     end
   endcase
 end
+
+assign rts_n_o = ~(frame_ready & rx_enable_i);
 
 always_ff @( posedge tck or negedge rst_n) begin
   if(!rst_n) begin
@@ -129,12 +142,14 @@ fifo_async #(.data_size(8), .buffer_size(fifo_buffer_size)) fifo_i
   .deq_valid (rx_d_valid_o),
   .deq_ready (rx_d_ready_i),
   // Status
-  .full      (rx_full_o),
-  .empty     (rx_empty_o),
+  .full      (fifo_full),
+  .empty     (fifo_empty),
   .flush     (uart_config_i.flush_rx)
 );
 
-assign overrun_error_o = rx_full_o & frame_valid;
+assign overrun_error = fifo_full & frame_valid;
+
+assign rx_status_o = $size(RXStatus_t)'({frame_len_error, parity_error, overrun_error, fifo_full, fifo_empty});
 
 endmodule
 

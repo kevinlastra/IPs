@@ -1,4 +1,12 @@
-
+// ============================================================
+// Project      : UART IP
+// Author       : Kevin Lastra
+// Description  : UART (Universal Asynchronous Receiver/Transmitter) 
+// 
+// Revision     : 1.0.0
+// 
+// License      : MIT License
+// ============================================================
 
 module uart_flow_ctrl
   import uart_defs::*;
