@@ -18,7 +18,7 @@ package uart_defs;
   localparam TXDATA        = {1'b1, 12'h010};
   localparam TXSTATUS      = {1'b1, 12'h014};
   localparam TXIRQMASK     = {1'b1, 12'h018};
-  localparam STATUS        = {1'b1, 12'h01C};
+  localparam CONTROL       = {1'b1, 12'h01C};
   localparam VERSION       = {1'b1, 12'h020};
 
   localparam VERSION_MAJOR   = 16'h1;
@@ -54,6 +54,8 @@ package uart_defs;
     // 1 - Master     : use only TX line
     // 0 - Not master : use only RX line
     logic master;
+    // Enable or disable parity bit
+    logic parity;
     // Enable or disable rts and cts management
     logic flow_control;
     logic flush_rx;

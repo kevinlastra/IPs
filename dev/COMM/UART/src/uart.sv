@@ -89,8 +89,8 @@ always_ff @(posedge clk) begin
   end
 end
 
-// UART registers
-uart_reg #(.regmap(regmap)) reg_inst
+// UART control and status register
+uart_csr #(.regmap(regmap)) mcr_inst
 (
   .clk             (clk),
   .rst_n           (rst_resync),
