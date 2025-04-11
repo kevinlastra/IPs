@@ -2,7 +2,12 @@
 
 \usepackage{hyperref}
 \usepackage{graphicx}
+\usepackage{longtable}
+\usepackage[dvipsnames,table]{xcolor}
+
 \graphicspath{{./img/}}
+
+\definecolor{light-gray}{HTML}{E5E4E2}
 
 \pagenumbering{arabic}
 
@@ -22,8 +27,16 @@
 \tableofcontents
 \newpage
 
+\section{Version}
+\begin{tabular}{|p{1.5cm}|p{1.5cm}|p{2.5cm}|p{7cm}|}
+  \hline
+  \rowcolor{light-gray}\textbf{Version} & \textbf{Date} & \textbf{Author} & \textbf{Description} \\
+  \hline
+  v1.0.0 & 0 & Kevin Lastra & Initial release of the UART Implemenation Reference \\
+  \hline
+\end{tabular}
+\newpage
 \section{Introduction}
-
 \subsection{Purpose of the manual}
 The purpose of this manual is twofold. First, it serves as a 
 comprehensive resource to document the Implementation of a 
@@ -39,7 +52,7 @@ systems, particularly those working with embedded systems,
 microcontrollers, and hardware interfaces.
 
 \newpage
-\section{UART overview}
+\section{UART protocol overview}
 The Universal Asynchronous Receiver-Transmitter (UART) is a 
 fundamental hardware communication protocol used for asynchronous
 serial communication. \\
@@ -52,7 +65,7 @@ UART allows two devices to exchange data using only two wires, RX for receive da
 and TX for transmit data.\\
 \begin{figure}[h]
   \centering
-  \includegraphics[scale=0.6]{UART_interface.drawio.png}
+  \includegraphics[width=0.6\textwidth]{UART_interface.png}
   \caption{Two UART's interfaces connected}
 \end{figure}
 
@@ -83,7 +96,7 @@ A UART data frame typically consists of: \\
   \centering
   \begin{tabular}{|p{3cm}|p{6cm}|p{3.5cm}|}
     \hline
-    \textbf{Range name} & \textbf{Description} & \textbf{Implementation bit length} \\
+    \rowcolor{light-gray}\textbf{Range name} & \textbf{Description} & \textbf{Implementation bit length} \\
     \hline
     Start bit & Signals the beginning of data transmission & 1 \\
     \hline
@@ -115,86 +128,138 @@ limitations:
   \item Limited error detection, UART error detection is limited to parity checks and
         stop bits.
 \end{enumerate}
-
+\newpage
 \section{Implementation}
+\subsection{Design}
+The UART implementation is composed of four primary modules: a Receiver, 
+a Transmitter, a Clock Generator, and a control and status register with an 
+AXI4 system interface.
 \begin{figure}[h]
   \centering
-  \includegraphics[scale=0.6]{UART_IMPL_DIAGRAM.drawio.png}
-  \caption{Implementation diagram}
+  \includegraphics[scale=0.6]{UART_IMPL_DIAGRAM.png}
+  \caption{Implementation diagram.}
 \end{figure}
-\subsection{Design}
-\subsection{Interface}
-\subsubsection{UART}
-The UART interface includes the basic two wires for data transmission and reception
-\textbf{rx} and \textbf{tx}.\\
-In addition to the basic lines, the UART interface includes two control flow lines:
-\begin{enumerate}
-  \item RTS\_N \textbf{(Ready to Send)}: Signals that the device is ready to send data.
-  \item CTS\_N \textbf{(Clear to Send)}: Indicate that the receiving device is ready 
-        to accept data.
-\end{enumerate}
-\textbf{Why use cts\_n and rts\_n?}\\~\\
-The flow control solve two principal issues:
-\begin{enumerate}
-  \item Overflow, a fast transmitter could overwhelm a slower receiver, leading to 
-        data loss or corruption
-  \item Collision, when two devices attempt to transmit data simultaneously, it can 
-        result in garbled communication or corrupted data.
-\end{enumerate}
-Without proper flow control, these issues can severely impact communication reliability.
-The control flow wires solve this by coordinating the readiness of both devices:
-\begin{enumerate}
-  \item The transmitter checks \textbf{cts\_n} to ensure the receiver is ready before sending 
-        data.
-  \item The receiver asserts \textbf{rts\_n} when it is ready to receive more data, allowing 
-        the transmitter to proceed.
-\end{enumerate}
-This approach is especially useful in systems with devices of varying processing
-speeds or in applications where reliability is critical, such as industrial 
-communication systems or high-throughput embedded designs.
-\subsubsection{System}
-On the system side, the UART interface is connected to the system using the following
-components:\\~\\
-\textbf{AXI4 bus}\\~\\
-The UART control and configuration are managed through an AXI4 bus interface, a 
-widely used protocol in system-on-chip (SoC) designs. The AXI4 bus allows the system
-to:\\
-\begin{enumerate}
-  \item Configure UART parameters.
-  \item Monitor UART status registers for errors, activity, or flow control states.
-  \item Enable or disable interrupts for data transmission and reception.
-\end{enumerate}
 
-\textbf{IRQ lines for RX and TX}\\~\\
-To optimize system efficiency, the UART module includes two dedicated interrupt
-wires.\\~\\
-\textbf{Wakeup line}\\~\\
-The wake-up line is used to bring the system out of a low-power or sleep mode when 
-activity is detected on the UART interface.
-\subsection{Registers}
-\subsection{Interrupt request (IRQ)}
-\subsection{Low power}
+\subsubsection{Uart configuration}
+\# TODO : configuration structure
+\subsubsection{Data frame}
+The received and transmitted data frame is built has follows : \\
 
-\section{Versioning}
-This manual follows a structured versioning system to ensure
-clarity and traceability of updates. The version number is 
-formatted as vX.Y.Z, where:
-\begin{enumerate}
-  \item \textbf{X} - major revisions, such as significant updates to 
-            content or structure.
-  \item \textbf{Y} - minor revisions, such as additions or updates 
-            to specific sections.
-  \item \textbf{Z} - minor edits, such as corrections to typos, 
-            formatting, or small clarifications.
-\end{enumerate}
-\subsection{History}
-\begin{tabular}{|p{1.5cm}|p{1.5cm}|p{2.5cm}|p{7cm}|}
+\noindent \begin{tabular}{|p{3cm}|p{3cm}|p{3cm}|p{3cm}|}
   \hline
-  Version & Date & Author & Description \\
+  \rowcolor{light-gray}\textbf{Start} & \textbf{Data} & \textbf{Parity} & \textbf{Stop} \\
   \hline
-  v1.0.0 & 0 & Kevin Lastra & Initial release of the UART Implemenation Reference \\
+  1 & 8 & *1  & 1 \\
   \hline
-\end{tabular}
-\section{Glosary}
-\section{References}
+\end{tabular} \\~\\
+\noindent (*) The parity bit is an optional feature.
+\subsubsection{Receiver (RX)}
+This module is responsible for sampling and decoding incoming serial data. It 
+detects the start bit, samples each data bit based on the configured baud rate, 
+check the parity bit and verifies the stop bit. Once a complete and valid frame 
+is received, the data byte is stored in an asynchronous FIFO for further 
+processing by the system.
+
+\# TODO : rx status
+
+\subsubsection{Transmitter (TX)}
+The transmitter handles the serialization of data from an asynchronous FIFO. 
+It prepends a start bit, appends a parity bit and a stop bit, and transmits the 
+bits sequentially according to the configured baud rate.
+
+\# TODO : tx status
+
+\subsubsection{Interrupts}
+\# TODO : Explains when is latch and posedge event
+\subsubsection{Wakeup line}
+\# TODO : Explains when is latch and posedge event
+
+\subsection{Control and status registers}
+
+\noindent\begin{longtable}{|p{2.2cm}|p{1.4cm}|p{1.1cm}|p{1.1cm}|p{7cm}|}
+    \hline
+    \rowcolor{light-gray}\textbf{Register} & \textbf{Access type} & \textbf{Offset} & \textbf{Reset} & \textbf{Description} \\
+    \hline
+    divider & RW & 0x00 & 0x0 & Used to generate the UART clock by 
+    dividing the system clock. \\
+    \hline
+    rx\_data & RO & 0x04 & 0x0 & Last received data. One-time read access. \\
+    \hline
+    rx\_status & RO & 0x08 & 0x0 & RX module status: \\
+    & & & & \begin{tabular}{|c|c|}
+              \hline
+              \rowcolor{light-gray}Bit & Name \\
+              \hline
+              \rowcolor{white}
+               0 & Fifo empty \\
+               1 & Fifo full \\
+               2 & Overrun error \\
+               3 & Parity error \\
+               4 & Framing error \\
+              \hline
+            \end{tabular} \\
+    & & & & \\
+    \hline
+    rx\_irq\_mask & RW & 0x0C & 0x0 & Enables interrupts for specific bits in rx\_status \\
+    \hline
+    tx\_data & WO & 0x10 & 0x0 & Write data to TX asynchronous FIFO. If full overrun\_error 
+    status will be set to 1. \\
+    \hline
+    tx\_status & RO & 0x14 & 0x0 & TX module status: \\
+    & & & & \begin{tabular}{|c|c|}
+              \hline
+              \rowcolor{light-gray}Bit & Name \\
+              \hline
+              \rowcolor{white}
+               0 & Fifo full \\
+               1 & Fifo empty \\
+               2 & Overflow error \\
+              \hline
+            \end{tabular} \\
+    & & & & \\
+    \hline
+    tx\_irq\_mask & RO & 0x18 & 0x0 & Enables interrupts for specific bits in tx\_status \\
+    \hline
+    control & RW & 0x1C & 0x0 & Configure UART: \\
+    & & & & \begin{tabular}{|c|l|}
+              \hline
+              \rowcolor{light-gray}\textbf{Bit} & \textbf{Name} \\
+              \hline
+              \rowcolor{white}
+               0 & Flush tx FIFO \\
+              \hline
+               1 & Flush rx FIFO \\
+              \hline
+               2 & Enable/Disable flow control \\
+              \hline
+               3 & Enable/Disable parity bit  \\
+              \hline
+               4 & Master device. Used only \\ 
+                 & on mode SIMPLEX or \\ 
+                 & HALFDUPLEX. \\ 
+                 & 1 - Use only TX line \\
+                 & 0 - Use only RX line \\
+              \hline
+               [5:6] & Uart mode: \\ 
+                     & 2'b00 : SIMPLEX \\
+                     & 2'b01 : HALFDUPLEX \\
+                     & 2'b20 : FULLDUPLEX \\
+              \hline
+            \end{tabular} \\
+    & & & & \\
+    \hline
+    version & RO & 0x20 &  & Hold the current version implemented \\
+    \hline
+\end{longtable}
+
+\subsubsection{Instantiation}
+\# TODO :
+\# Input and Outputs
+\# Axi4 interface
+\# Parameters
+
+\subsubsection{Instantiation}
+\# TODO : 
+\# FMAX?
+
 \end{document}
