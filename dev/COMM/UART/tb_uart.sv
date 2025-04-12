@@ -20,7 +20,7 @@ module tb_uart
 
   axi4 #(.alen(32), .xlen(32), .idlen(5)) bus(.clk(clk));
 
-  uart #(.regmap(32'h1_0000)) uart_i
+  uart #(.REG_ADDR_MAP(32'h1_0000)) uart_i
   (
     .rst_n    (rst_n),
     .clk      (clk),
