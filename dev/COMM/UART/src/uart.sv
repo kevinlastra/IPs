@@ -11,7 +11,7 @@
 module uart
 import uart_defs::*;
 #(
-  parameter logic [31:0] regmap = 32'h0
+  parameter logic [31:0] REG_ADDR_MAP = 32'h0
 )
 (
   // System reset and clock
@@ -90,7 +90,7 @@ always_ff @(posedge clk) begin
 end
 
 // UART control and status register
-uart_csr #(.regmap(regmap)) mcr_inst
+uart_csr #(.REG_ADDR_MAP(REG_ADDR_MAP)) mcr_inst
 (
   .clk             (clk),
   .rst_n           (rst_resync),

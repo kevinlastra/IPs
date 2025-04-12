@@ -17,7 +17,7 @@ module uart_csr
   import axi4_pkg::*;
   import uart_defs::*;
   #(
-    parameter logic [31:0] regmap = 32'h0
+    parameter logic [31:0] REG_ADDR_MAP = 32'h0
   ) 
   (
     // System reset and clock
@@ -67,8 +67,8 @@ module uart_csr
   Config_t               uart_config;
   logic [31:0]           divider;
 
-  assign wsel = bus.aw_valid & bus.w_valid & {bus.aw.addr[31:12], 12'b0} == regmap;
-  assign rsel = bus.ar_valid & {bus.ar.addr[31:12], 12'b0} == regmap;
+  assign wsel = bus.aw_valid & bus.w_valid & {bus.aw.addr[31:12], 12'b0} == REG_ADDR_MAP;
+  assign rsel = bus.ar_valid & {bus.ar.addr[31:12], 12'b0} == REG_ADDR_MAP;
 
   // Write REG
   always_comb begin

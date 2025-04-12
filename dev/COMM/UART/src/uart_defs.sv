@@ -58,7 +58,9 @@ package uart_defs;
     logic parity;
     // Enable or disable rts and cts management
     logic flow_control;
+    // Flush RX FIFO
     logic flush_rx;
+    // Flush TX FIFO
     logic flush_tx;
   } Config_t;
 
