@@ -3,7 +3,31 @@
 \usepackage{hyperref}
 \usepackage{graphicx}
 \usepackage{longtable}
+\usepackage{listings}
 \usepackage[dvipsnames,table]{xcolor}
+
+\lstdefinelanguage{SystemVerilog}%
+  {morekeywords=[1]{module, endmodule, input, output, wire, logic, reg, always, begin, end, if, else, case, endcase, assign, parameter},
+   morekeywords=[2]{logic, bit, int, enum, typedef},
+   sensitive=true,
+   morecomment=[l]{//},
+   morecomment=[s]{/*}{*/},
+   morestring=[b]",
+  }
+
+\lstset{
+  language=SystemVerilog,
+  basicstyle=\ttfamily\small,
+  keywordstyle=[1]\color{blue}\bfseries,
+  keywordstyle=[2]\color{purple},
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{orange},
+  breaklines=true,
+  columns=fullflexible,
+  frame=single,
+  captionpos=b,
+  showstringspaces=false
+}
 
 \graphicspath{{./img/}}
 
@@ -141,7 +165,28 @@ AXI4 system interface.
 \end{figure}
 
 \subsubsection{Uart configuration}
-\# TODO : configuration structure
+The UART configuration register allows control over various operational 
+aspects of the UART. It includes the following fields:
+\begin{enumerate}
+\item \textbf{flush\_rx / flush\_tx}: Used to clear the RX and TX asynchronous FIFOs, 
+      respectively.
+\item \textbf{flow\_control}: Enables or disables hardware flow control using the CTS\_N 
+      (Clear To Send) and RTS\_N  (Request To Send) signals.
+\item \textbf{parity}: Enables or disables parity checking and generation for data frames.
+\item \textbf{master}: Defines which part of the UART (transmitter or receiver) is active. 
+      This is only used in SIMPLEX or HALFDUPLEX communication, where only one direction is 
+      active at a time.
+\item \textbf{mode}: Specifies the UART communication mode:
+      \begin{enumerate}
+        \item \textbf{FULLDUPLEX}: Both transmitter and receiver are active and operate simultaneously. 
+              This is the standard mode for most UART communication.
+        \item \textbf{HALFDUPLEX}: Transmitter and receiver share the same communication line, but only 
+              one can be active at a time. The master field determines which is currently active.
+        \item \textbf{SIMPLEX}: Communication occurs in only one direction. The master field is used 
+              to enable either TX or RX, but not both.
+      \end{enumerate}
+\end{enumerate}
+This register is typically configured through the AXI4 interface during initialization or reconfiguration of the UART.
 \subsubsection{Data frame}
 The received and transmitted data frame is built has follows : \\
 
@@ -156,23 +201,58 @@ The received and transmitted data frame is built has follows : \\
 \subsubsection{Receiver (RX)}
 This module is responsible for sampling and decoding incoming serial data. It 
 detects the start bit, samples each data bit based on the configured baud rate, 
-check the parity bit and verifies the stop bit. Once a complete and valid frame 
+check the parity bit (if enabled) and verifies the stop bit. Once a complete and valid frame 
 is received, the data byte is stored in an asynchronous FIFO for further 
-processing by the system.
+processing by the system. \\
 
-\# TODO : rx status
+\noindent The RX module provides a status register that reflects the current state of the receiver and 
+any error conditions. The following bits are included:
+\begin{enumerate}
+\item \textbf{fifo\_empty}: Indicates that the RX FIFO is empty and no data is available to 
+      read.
+\item \textbf{fifo\_full}: Indicates that the RX FIFO is full and cannot accept more data.
+\item \textbf{overrun\_error}: Set when new data arrives while the FIFO is full, meaning data 
+      has been lost because the system did not read the previous data in time.
+\item \textbf{parity\_error}: Set when parity checking is enabled and the received data has an 
+      invalid or unexpected parity bit. This may also occur if parity is disabled but a 
+      parity bit is present in the incoming frame.
+\item \textbf{framing\_error}: Set when the received frame does not conform to the expected 
+      UART format.
+\end{enumerate}
+These status bits can be used by the system to monitor the integrity and availability of received data and handle UART errors appropriately.
 
 \subsubsection{Transmitter (TX)}
 The transmitter handles the serialization of data from an asynchronous FIFO. 
 It prepends a start bit, appends a parity bit and a stop bit, and transmits the 
 bits sequentially according to the configured baud rate.
 
-\# TODO : tx status
+\noindent The transmitter module provides a status register that reports the current state 
+of the TX FIFO and potential write errors. It includes the following bits:
+\begin{enumerate}
+\item \textbf{fifo\_empty}: Indicates that the TX FIFO is empty and no data is waiting to be 
+      transmitted.
+\item \textbf{fifo\_full}: Indicates that the TX FIFO is full and cannot accept additional 
+      data.
+\item \textbf{overrun\_error}: Set when the system writes new data to the TX FIFO while it 
+      is already full. In this case, the new data is lost.
+\end{enumerate}
+
+\noindent These status bits help the system manage data transmission and ensure that write operations 
+are performed safely and efficiently.
 
 \subsubsection{Interrupts}
-\# TODO : Explains when is latch and posedge event
+The UART module generates an interrupt when one or more bits in the status register are set 
+and the corresponding bits in the interrupt mask are enabled. The interrupt signal remains 
+active as long as at least one masked status condition is true.
+
 \subsubsection{Wakeup line}
-\# TODO : Explains when is latch and posedge event
+The wakeup signal is asserted by the RX module when it detects valid incoming serial data. 
+The signal remains active for the duration of the reception, typically 8 to 9 clock cycles, 
+corresponding to the length of a valid UART frame (start bit, data bits, optional parity, and 
+stop bit). \\
+
+\noindent This can be used to wake up the system from low-power modes when data activity is 
+detected on the RX line.
 
 \subsection{Control and status registers}
 
@@ -180,6 +260,9 @@ bits sequentially according to the configured baud rate.
     \hline
     \rowcolor{light-gray}\textbf{Register} & \textbf{Access type} & \textbf{Offset} & \textbf{Reset} & \textbf{Description} \\
     \hline
+    \endhead
+    \hline
+    \endfoot
     divider & RW & 0x00 & 0x0 & Used to generate the UART clock by 
     dividing the system clock. \\
     \hline
@@ -252,14 +335,88 @@ bits sequentially according to the configured baud rate.
     \hline
 \end{longtable}
 
-\subsubsection{Instantiation}
-\# TODO :
-\# Input and Outputs
-\# Axi4 interface
-\# Parameters
+\subsection{Integration}
+This section describes how to instantiate and integrate the UART module into other projects, 
+including its parameters, ports, and interfaces.
 
-\subsubsection{Instantiation}
-\# TODO : 
-\# FMAX?
+\subsubsection{Parameters}
+The module includes configurable parameters to adapt the UART to different system requirements:
+
+\noindent \begin{tabular}{|p{4cm}|p{2cm}|p{7cm}|}
+  \hline
+  \rowcolor{light-gray}\textbf{Name} & \textbf{Length} & \textbf{Description} \\
+  \hline
+  REG\_ADDR\_MAP & 1 & Defines the base addresses of the UART internal registers for AXI4 access \\
+  \hline
+\end{tabular} \\~\\
+
+\subsubsection{Inputs}
+\noindent \begin{tabular}{|p{2cm}|p{2cm}|p{9cm}|}
+  \hline
+  \rowcolor{light-gray}\textbf{Name} & \textbf{Length} & \textbf{Description} \\
+  \hline
+  clk & 1 & System clock \\
+  \hline
+  rst\_n & 1 & Active-low reset signal \\
+  \hline
+  rx & 1 & Serial input line \\
+  \hline
+  cts\_n & 1 & Clear to send signal \\
+  \hline
+\end{tabular} \\~\\
+
+\subsubsection{Outputs}
+\noindent \begin{tabular}{|p{2cm}|p{2cm}|p{9cm}|}
+  \hline
+  \rowcolor{light-gray}\textbf{Name} & \textbf{Length} & \textbf{Description} \\
+  \hline
+  tx & 1 & Serial output line \\
+  \hline
+  rts\_n & 1 & Request to send signal \\
+  \hline
+  wakeup & 1 & Wakeup signal \\
+  \hline
+  rx\_irq & 1 & rx interrupt request \\
+  \hline
+  tx\_irq & 1 & tx interrupt request \\
+  \hline
+\end{tabular} \\~\\
+
+\subsubsection{Interface}
+\textbf{AXI4 Slave Interface}: Used to access the configuration and status registers.
+\newpage
+\subsubsection{Instantiation example}
+\begin{lstlisting}[caption={UART Module Instantiation}]
+  uart #(
+    .REG_ADDR_MAP(0x5000_0000)
+  ) uart_inst (
+    .clk(clk),
+    .rst_n(rst_n),
+    .rx(rx_line),
+    .tx(tx_line),
+    .rts_n(rts_n_line),
+    .cts_n(cts_n_line),
+    .wakeup(uart_wakeup),
+    .rx_irq(uart_irq),
+    .tx_irq(uart_irq),
+    .bus(axi4)
+  );
+  \end{lstlisting}
+
+\section{Synthesis Corners}
+
+\noindent \begin{tabular}{|p{2cm}|p{2cm}|p{9cm}|}
+  \hline
+  \rowcolor{light-gray}\textbf{Metric} & \textbf{Value} & \textbf{Conditions} \\
+  \hline
+  FMAX & X & X \\
+  \hline
+  LUTs & X & X \\
+  \hline
+  FFs & X & X \\
+  \hline
+  BRAMs & X & X \\
+  \hline
+\end{tabular} \\~\\
 
 \end{document}
