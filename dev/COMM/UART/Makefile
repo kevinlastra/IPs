@@ -7,15 +7,16 @@ REMOVE_LINT= -Wno-PINCONNECTEMPTY \
 						 -Wno-UNDRIVEN \
 						 -Wno-UNUSEDPARAM
 
-PKGS = -I ../../BUS/AXI/axi4_pkg.sv
+SRCS = ../../BUS/AXI/axi4_pkg.sv \
+			 ../../BUS/AXI/axi4.sv \
+	   	 ../../UTIL/FIFO/ASYNC/src/fifo_async.sv \
+	   	 src/uart_defs.sv \
+	   	 src/uart_csr.sv \
+	   	 src/uart_rx.sv \
+	   	 src/uart_tx.sv \
+	   	 src/uart.sv
 
-SRCS = ../../BUS/AXI/axi4.sv \
-			 ../../UTIL/FIFO/ASYNC/src/fifo_async.sv \
-			src/uart_defs.sv \
-			src/uart_reg.sv \
-			src/uart_rx.sv \
-			src/uart_tx.sv \
-			src/uart.sv
+all: verilator
 
 verilator:
 	verilator $(FLAGS) $(PKGS) $(SRCS) $(REMOVE_LINT) tb_uart.sv --top-module tb_uart -exe tb.cpp
@@ -25,7 +26,7 @@ coverage:
 	verilator $(FLAGS) --coverage $(PKGS) $(SRCS) $(REMOVE_LINT) tb_uart.sv --top-module tb_uart -exe tb.cpp
 
 clean: 
-	rm *.gtkw
-	rm *.vcd
-	rm tb
-	rm -rf obj_dir
+	rm -f *.gtkw
+	rm -f *.vcd
+	rm -f tb
+	rm -rf ./obj_dir
