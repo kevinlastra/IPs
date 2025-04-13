@@ -5,6 +5,7 @@ module tb_uart
     // Clk & reset
     input logic rst_n,
     input logic clk,
+    input logic tck,
 
     // Uart
     input  logic rx,
@@ -45,7 +46,7 @@ module tb_uart
 
   // Set divider to 2604, config FullDuplex and send "Hello word"
   Debug_t tab[22] = {{32'h1_0000, 1'b1, 32'hA2C},
-                     {32'h1_001C, 1'b1, 32'h20},
+                     {32'h1_001C, 1'b1, 32'h1114},
                      {32'h1_0010, 1'b1, 32'h48},
                      {32'h1_0014, 1'b0, 32'h0},
                      {32'h1_0010, 1'b1, 32'h65},
@@ -151,7 +152,7 @@ module tb_uart
       RRESP : begin
         bus.r_ready = 1;
         if(bus.r_valid) begin
-          if(~bus.r.data[1]) begin
+          if(~bus.r.data[0]) begin
             cnt_d = cnt_q + 1;
           end
           state_d = IDLE;

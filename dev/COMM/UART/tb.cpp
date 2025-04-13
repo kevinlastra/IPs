@@ -4,7 +4,7 @@
 #include <verilated_vcd_c.h>
 #include "obj_dir/Vtb_uart.h"
 
-#define MAX_TIME 8000000
+#define MAX_TIME 1000000
 
 vluint64_t sim_time = 0;
 
@@ -84,6 +84,7 @@ void tb_uart(Vtb_uart* tb)
   tck_cnt = tck_cnt + 1;
   if(tck_cnt >= 1302) {
     tck = !tck;
+    tb->tck = tck;
     tck_cnt = 0;
     if(tck) {
       // Posedge
