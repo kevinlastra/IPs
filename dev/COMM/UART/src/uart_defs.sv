@@ -10,17 +10,18 @@
 
 package uart_defs;
 
-  // Uart memory map {sel: 1b, adr: 12b}
-  localparam DIVIDER       = {1'b1, 12'h000};
-  localparam RXDATA        = {1'b1, 12'h004};
-  localparam RXSTATUS      = {1'b1, 12'h008};
-  localparam RXIRQMASK     = {1'b1, 12'h00C};
-  localparam TXDATA        = {1'b1, 12'h010};
-  localparam TXSTATUS      = {1'b1, 12'h014};
-  localparam TXIRQMASK     = {1'b1, 12'h018};
-  localparam CONTROL       = {1'b1, 12'h01C};
-  localparam VERSION       = {1'b1, 12'h020};
+  // Uart memory map
+  localparam DIVIDER       = 12'h000;
+  localparam RXDATA        = 12'h004;
+  localparam RXSTATUS      = 12'h008;
+  localparam RXIRQMASK     = 12'h00C;
+  localparam TXDATA        = 12'h010;
+  localparam TXSTATUS      = 12'h014;
+  localparam TXIRQMASK     = 12'h018;
+  localparam CONTROL       = 12'h01C;
+  localparam VERSION       = 12'h020;
 
+  // Current version
   localparam VERSION_MAJOR   = 16'h1;
   localparam VERSION_MINOR   = 8'h0;
   localparam VERSION_PATCHES = 8'h0;
@@ -50,12 +51,16 @@ package uart_defs;
   typedef struct packed {
     Mode_t mode;
     // If the Uart communication mode
-    // is SIMPLEX or HALFDUPLEX take this bit into account
+    // is SIMPLEX take this bit into account
     // 1 - Master     : use only TX line
     // 0 - Not master : use only RX line
     logic master;
+    // Frame length can be 5 to 9 bits (Default 5)
+    logic [4:0] frame_len;
     // Enable or disable parity bit
     logic parity;
+    // Enable or disable double stop bit
+    logic dstop;
     // Enable or disable rts and cts management
     logic flow_control;
     // Flush RX FIFO
@@ -66,32 +71,31 @@ package uart_defs;
 
   // States machines
 
-  typedef enum bit[1:0] 
+  typedef enum bit[2:0] 
   { 
-    REG_RST  = 0,
-    REG_IDLE = 1,
-    REG_RRESP = 2,
-    REG_BRESP = 3
+    CSR_RST   = 0,
+    CSR_IDLE  = 1,
+    CSR_WAW   = 2,
+    CSR_WW    = 3,
+    CSR_RRESP = 4,
+    CSR_BRESP = 5
   } REGState_t;
 
-  typedef enum bit[1:0] {
-    TX_IDLE = 0,
-    TX_SHIFT = 1
-  } TXState_t;
-
-  typedef enum bit[1:0] {
-    RX_IDLE   = 0,
-    RX_SHIFT  = 1,
-    RX_PARITY = 2,
-    RX_STOP   = 3
-  } RXState_t;
-
-  typedef enum bit[1:0] 
-  {  
-    FC_IDLE = 0,
-    FC_DIST = 1,
-    FC_LOCAL = 2
-  } FCState_t;
+  typedef enum bit[3:0] {
+    IDLE = 0,
+    D1 = 1,
+    D2 = 2,
+    D3 = 3,
+    D4 = 4,
+    D5 = 5,
+    D6 = 6,
+    D7 = 7,
+    D8 = 8,
+    D9 = 9,
+    PARITY = 10,
+    STOP = 11,
+    DSTOP = 12
+  } FState_t;
 
 endpackage
 

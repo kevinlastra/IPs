@@ -48,7 +48,7 @@ logic        rx_enable;
 
 RXStatus_t   rx_status;
 
-logic [7:0]  rx_data;
+logic [8:0]  rx_data;
 logic        rx_data_valid;
 logic        rx_data_ready;
 
@@ -57,7 +57,7 @@ logic        tx_enable;
 
 TXStatus_t   tx_status;
 
-logic [7:0]  tx_data;
+logic [8:0]  tx_data;
 logic        tx_data_valid;
 
 // Reset Resync
@@ -90,7 +90,7 @@ always_ff @(posedge clk) begin
 end
 
 // UART control and status register
-uart_csr #(.REG_ADDR_MAP(REG_ADDR_MAP)) mcr_inst
+uart_csr #(.REG_ADDR_MAP(REG_ADDR_MAP)) csr_inst
 (
   .clk             (clk),
   .rst_n           (rst_resync),

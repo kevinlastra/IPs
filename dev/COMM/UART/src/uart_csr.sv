@@ -13,6 +13,17 @@
 
 // CSR : Control and Status Registers
 
+// Name      Access Type    Adresse
+// Divider        RW          0x00
+// RXData         RO          0x04
+// RXStatus       RO          0x08
+// RXIrqMask      RW          0x0C
+// TXData         WO          0x10
+// TXStatus       RO          0x14
+// TXIrqMask      RW          0x18
+// Control        RW          0x1C
+// Version        RO          0x20
+ 
 module uart_csr
   import axi4_pkg::*;
   import uart_defs::*;
@@ -35,12 +46,12 @@ module uart_csr
 
     // TX interface
     output logic        tx_enable_o,
-    output logic [7:0]  tx_d_o,
+    output logic [8:0]  tx_d_o,
     output logic        tx_d_valid_o,
 
     // RX interface
     output logic        rx_enable_o,
-    input  logic [7:0]  rx_d_i,
+    input  logic [8:0]  rx_d_i,
     input  logic        rx_d_valid_i,
     output logic        rx_d_ready_o,
 
@@ -52,93 +63,136 @@ module uart_csr
   REGState_t             state_d;
   REGState_t             state_q;
 
-  logic                  wsel;
-  logic                  rsel;
+  logic                  wr;
+  logic                  rd;
+  logic                  sel;
 
-  logic [7:0]            tx_d_q;
+  // CSRs
+  logic                  rd_divider;
+  logic                  wr_divider;
+  logic                  rd_rxdata;
+  logic                  rd_rxstatus;
+  logic                  rd_rxirqmask;
+  logic                  wr_rxirqmask;
+  logic                  wr_txdata;
+  logic                  rd_txstatus;
+  logic                  rd_txirqmask;
+  logic                  wr_txirqmask;
+  logic                  rd_control;
+  logic                  wr_control;
+  logic                  rd_version;
 
-  logic [31:0]           bus_rdata;
+  logic [31:0]           bus_addr_d, bus_addr_q;
+  logic [31:0]           bus_wdata_d, bus_wdata_q;
+  logic [31:0]           bus_rdata_d, bus_rdata_q;
   logic [bus.idlen-1:0]  bus_id_d, bus_id_q;
-  XRESP_t                bus_w_resp;
-  XRESP_t                bus_r_resp;
 
   logic [31:0]           rxirqmask;
   logic [31:0]           txirqmask;
-  Config_t               uart_config;
-  logic [31:0]           divider;
+  Config_t               cast_config, cast_config_n;
 
-  assign wsel = bus.aw_valid & bus.w_valid & {bus.aw.addr[31:12], 12'b0} == REG_ADDR_MAP;
-  assign rsel = bus.ar_valid & {bus.ar.addr[31:12], 12'b0} == REG_ADDR_MAP;
+  assign sel = REG_ADDR_MAP == {bus_addr_d[31:12], 12'b0};
 
-  // Write REG
-  always_comb begin
-    bus_w_resp = OKAY;
+  assign rd_divider   = rd & sel & bus_addr_d[11:0] == DIVIDER;
+  assign wr_divider   = wr & sel & bus_addr_d[11:0] == DIVIDER;
+  assign rd_rxdata    = rd & sel & bus_addr_d[11:0] == RXDATA;
+  assign rd_rxstatus  = rd & sel & bus_addr_d[11:0] == RXSTATUS;
+  assign rd_rxirqmask = rd & sel & bus_addr_d[11:0] == RXIRQMASK;
+  assign wr_rxirqmask = wr & sel & bus_addr_d[11:0] == RXIRQMASK;
+  assign wr_txdata    = wr & sel & bus_addr_d[11:0] == TXDATA;
+  assign rd_txstatus  = rd & sel & bus_addr_d[11:0] == TXSTATUS;
+  assign rd_txirqmask = rd & sel & bus_addr_d[11:0] == TXIRQMASK;
+  assign wr_txirqmask = wr & sel & bus_addr_d[11:0] == TXIRQMASK;
+  assign rd_control   = rd & sel & bus_addr_d[11:0] == CONTROL;
+  assign wr_control   = wr & sel & bus_addr_d[11:0] == CONTROL;
+  assign rd_version   = rd & sel & bus_addr_d[11:0] == VERSION;
 
-    tx_d_valid_o = 0;
-
-    case({wsel, bus.aw.addr[11:0]})
-      DIVIDER : begin
-        divider = bus.w.data;
+  // Divider register
+  always_ff @(posedge clk or negedge rst_n) begin
+    if(~rst_n) begin
+      divider_q_o <= 0;    
+    end else begin
+      if(wr_divider) begin
+        divider_q_o <= $bits(divider_q_o)'(bus_wdata_d);
       end
-      TXDATA : begin
-        tx_d_o = bus.w.data[7:0]; 
-        tx_d_valid_o = 1;
-      end
-      RXIRQMASK : begin
-        rxirqmask = bus.w.data;
-      end
-      TXIRQMASK : begin
-        txirqmask = bus.w.data;
-      end
-      CONTROL : begin
-        uart_config = $bits(Config_t)'(bus.w.data);
-      end
-      default: 
-        bus_w_resp = SLVERR;
-    endcase
+    end
   end
 
-  // Read REG
-  always_comb begin
-    bus_r_resp = OKAY;
+  // RX Irq Mask register
+  always_ff @(posedge clk or negedge rst_n) begin
+    if(~rst_n) begin
+      rxirqmask_q_o <= 0;    
+    end else begin
+      if(wr_rxirqmask) begin
+        rxirqmask_q_o <= $bits(rxirqmask_q_o)'(bus_wdata_d[$bits(RXStatus_t)-1:0]);
+      end
+    end
+  end
 
-    case({rsel, bus.ar.addr[11:0]})
-      DIVIDER : begin
-        bus_rdata = divider_q_o;
+  // Write data on TX asyncronous FIFO
+  assign tx_d_o = $bits(tx_d_o)'(bus_wdata_d);
+  assign tx_d_valid_o  = wr_txdata;
+
+  // Write TX Irq Mask register
+  always_ff @(posedge clk or negedge rst_n) begin
+    if(~rst_n) begin
+      txirqmask_q_o <= 0;
+    end else begin
+      if(wr_txirqmask) begin
+        txirqmask_q_o <= $bits(txirqmask_q_o)'(bus_wdata_d[$bits(TXStatus_t)-1:0]);
       end
-      RXDATA : begin
-        bus_rdata = {24'b0, rx_d_i};
+    end
+  end
+
+  // Write Uart configuration register
+  always_comb begin
+    cast_config_n = cast_config;
+    if($countones(cast_config.frame_len) != 1) begin
+      cast_config_n.frame_len = 5'h1;  
+    end
+  end
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if(~rst_n) begin
+      cast_config     <= 0;
+      uart_config_q_o <= 0;
+    end else begin
+      if(wr_control) begin
+        cast_config <= $bits(cast_config)'(bus_wdata_d[$bits(Config_t)-1:0]);
       end
-      RXSTATUS : begin
-        bus_rdata = 32'(rx_status_i);
-      end
-      RXIRQMASK : begin
-        bus_rdata = rxirqmask_q_o;
-      end
-      TXDATA : begin
-        bus_rdata = {24'h0, tx_d_q};
-      end
-      TXSTATUS : begin
-        bus_rdata = 32'(tx_status_i);
-      end
-      TXIRQMASK : begin
-        bus_rdata = txirqmask_q_o;
-      end
-      CONTROL : begin
-        bus_rdata = {26'h0, uart_config_q_o};
-      end
-      VERSION : begin
-        bus_rdata = {VERSION_MAJOR, VERSION_MINOR, VERSION_PATCHES};
-      end
-      default: 
-        bus_r_resp = SLVERR;
-    endcase 
+      uart_config_q_o <= cast_config_n;
+    end
+  end
+
+  // Read valid CSRs
+  always_comb begin
+    if (rd_divider) begin
+      bus_rdata_d = divider_q_o;
+    end else if(rd_rxdata) begin
+      bus_rdata_d = $bits(bus_rdata_d)'(rx_d_i);
+    end else if(rd_rxstatus) begin
+      bus_rdata_d = $bits(bus_rdata_d)'(rx_status_i);
+    end else if(rd_rxirqmask) begin
+      bus_rdata_d = $bits(bus_rdata_d)'(rxirqmask_q_o);
+    end else if(rd_txstatus) begin
+      bus_rdata_d = $bits(bus_rdata_d)'(tx_status_i);
+    end else if(rd_txirqmask) begin
+      bus_rdata_d = $bits(bus_rdata_d)'(txirqmask_q_o);
+    end else if(rd_control) begin
+      bus_rdata_d = $bits(bus_rdata_d)'(uart_config_q_o);
+    end else if(rd_version) begin
+      bus_rdata_d = {VERSION_MAJOR, VERSION_MINOR, VERSION_PATCHES};
+    end else begin
+      bus_rdata_d = 0;
+    end
   end
 
   always_comb begin
     state_d = state_q;
-
+    
     bus_id_d = bus_id_q;
+    bus_addr_d = 0;
+    bus_wdata_d = 0;
 
     bus.ar_ready = 0;
     bus.aw_ready = 0;
@@ -150,64 +204,104 @@ module uart_csr
     bus.b       = '0;
     bus.b_valid = 0;
 
+    wr = 0;
+    rd = 0;
+
     case(state_q)
-      REG_RST : begin
-        state_d = REG_IDLE;
+      CSR_RST : begin
+        state_d = CSR_IDLE;
       end
-      REG_IDLE : begin
-        if(bus.aw_valid && bus.w_valid) begin
+      CSR_IDLE : begin
+        if(bus.ar_valid) begin
+          rd = 1;
+          bus.ar_ready = 1;
+
+          bus_addr_d = bus.ar.addr;
+          bus_id_d = bus.ar.id;
+          
+          state_d = CSR_RRESP;
+        end else if(bus.aw_valid && bus.w_valid) begin
+          wr = 1;
           bus.aw_ready = 1;
           bus.w_ready = 1;
 
+          bus_addr_d = bus.aw.addr;
+          bus_wdata_d = bus.w.data;
           bus_id_d = bus.aw.id;
           
-          state_d = REG_BRESP;
-        end else if(bus.ar_valid) begin
-          bus.ar_ready = 1;
+          state_d = CSR_BRESP;
+        end else if(bus.aw_valid)  begin
+          bus.aw_ready = 1;
 
-          bus_id_d = bus.ar.id;
-          
-          state_d = REG_RRESP;
+          bus_id_d = bus.aw.id;
+          bus_addr_d = bus.aw.addr;
+
+          state_d = CSR_WW;
+        end else if(bus.w_valid)  begin
+          bus_wdata_d = bus.w.data;
+
+          state_d = CSR_WAW;
         end
       end 
-      REG_RRESP : begin
+      CSR_WW : begin
+        bus_id_d = bus_id_q;
+        bus_addr_d = bus_addr_q;
+
+        if(bus.w_valid) begin
+          bus.w_ready = 1;
+
+          wr = 1;
+
+          state_d = CSR_BRESP;
+        end
+      end
+      CSR_WAW : begin
+        if(bus.aw_valid) begin
+          bus.aw_ready = 1;
+
+          bus_id_d = bus.aw.id;
+          bus_addr_d = bus.aw.addr;
+          bus_wdata_d = bus_wdata_q;
+
+          wr = 1;
+
+          state_d = CSR_BRESP;
+        end
+      end
+      CSR_RRESP : begin
         bus.r_valid = 1;
         bus.r.last  = 1;
-        bus.r.data  = bus_rdata;
-        bus.r.resp  = bus_r_resp;
+        bus.r.data  = bus_rdata_q;
+        bus.r.resp  = bus_addr_q > VERSION ? SLVERR : OKAY;
         bus.r.id    = bus_id_q;
         if(bus.r_ready)
-          state_d = REG_IDLE;
+          state_d = CSR_IDLE;
       end
-      REG_BRESP : begin
+      CSR_BRESP : begin
         bus.b_valid = 1;
-        bus.b.resp  = bus_w_resp;
+        bus.b.resp  = bus_addr_q > VERSION ? SLVERR : OKAY;
         bus.b.id    = bus_id_q;
         if(bus.b_ready)
-          state_d = REG_IDLE;
+          state_d = CSR_IDLE;
       end
       default: 
-        state_d = REG_IDLE;
+        state_d = CSR_IDLE;
     endcase
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
-      divider_q_o     <= '0;
-      rxirqmask_q_o   <= '0;
-      txirqmask_q_o   <= '0;
-      uart_config_q_o <= '0;
-      bus_id_q        <= 0;
-
-      state_q <= REG_RST;
+      bus_id_q   <= 0;
+      bus_addr_q <= 0;
+      bus_wdata_q <= 0;
+      bus_rdata_q <= 0;
+      state_q    <= CSR_RST;
     end else begin
-      bus_id_q        <= bus_id_d;
-      divider_q_o     <= divider;
-      rxirqmask_q_o   <= rxirqmask;
-      txirqmask_q_o   <= txirqmask;
-      uart_config_q_o <= uart_config;
-
-      state_q <= state_d;
+      bus_id_q   <= bus_id_d;
+      bus_addr_q <= bus_addr_d;
+      bus_wdata_q <= bus_wdata_d;
+      bus_rdata_q <= bus_rdata_d;
+      state_q    <= state_d;
     end
   end
 
