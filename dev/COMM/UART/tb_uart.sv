@@ -46,7 +46,7 @@ module tb_uart
 
   // Set divider to 2604, config FullDuplex and send "Hello word"
   Debug_t tab[22] = {{32'h1_0000, 1'b1, 32'hA2C},
-                     {32'h1_001C, 1'b1, 32'h1114},
+                     {32'h1_001C, 1'b1, 32'h122A},
                      {32'h1_0010, 1'b1, 32'h48},
                      {32'h1_0014, 1'b0, 32'h0},
                      {32'h1_0010, 1'b1, 32'h65},
