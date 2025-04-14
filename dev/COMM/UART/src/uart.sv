@@ -43,9 +43,11 @@ logic [31:0] uart_rxirqmask;
 logic [31:0] uart_txirqmask;
 Config_t     uart_config;
 
-// RX interface
-logic        rx_enable;
+logic int_rts_n;
+logic int_cts_n;
+logic int_rx;
 
+// RX interface
 RXStatus_t   rx_status;
 
 logic [8:0]  rx_data;
@@ -53,8 +55,6 @@ logic        rx_data_valid;
 logic        rx_data_ready;
 
 // TX interface
-logic        tx_enable;
-
 TXStatus_t   tx_status;
 
 logic [8:0]  tx_data;
@@ -99,10 +99,8 @@ uart_csr #(.REG_ADDR_MAP(REG_ADDR_MAP)) csr_inst
   .rxirqmask_q_o   (uart_rxirqmask),
   .txirqmask_q_o   (uart_txirqmask),
   .uart_config_q_o (uart_config),
-  .tx_enable_o     (tx_enable),
   .tx_d_o          (tx_data),
   .tx_d_valid_o    (tx_data_valid),
-  .rx_enable_o     (rx_enable),
   .rx_d_i          (rx_data),
   .rx_d_valid_i    (rx_data_valid),
   .rx_d_ready_o    (rx_data_ready),
@@ -116,9 +114,8 @@ uart_rx rx_inst
   .clk               (clk),
   .rst_n             (rst_resync),
   .tck               (tck),
-  .rx_enable_i       (rx_enable),
-  .rx_i              (rx),
-  .rts_n_o           (rts_n),
+  .rx_i              (int_rx),
+  .rts_n_o           (int_rts_n),
   .rx_d_o            (rx_data),
   .rx_d_valid_o      (rx_data_valid),
   .rx_d_ready_i      (rx_data_ready),
@@ -133,9 +130,8 @@ uart_tx tx_inst
   .clk               (clk),
   .rst_n             (rst_resync),
   .tck               (tck),
-  .tx_enable_i       (tx_enable),
   .tx_q_o            (tx),
-  .cts_n_i           (cts_n),
+  .cts_n_i           (int_cts_n),
   .tx_d_i            (tx_data),
   .tx_d_valid_i      (tx_data_valid),
   .tx_status_o       (tx_status),
@@ -144,5 +140,10 @@ uart_tx tx_inst
 
 assign rx_irq = |(32'(rx_status) & uart_rxirqmask);
 assign tx_irq = |(32'(tx_status) & uart_txirqmask);
+
+assign rts_n     = uart_config.flow_control ? int_rts_n : 1'b0;
+assign int_cts_n = uart_config.flow_control ? cts_n : 1'b0;
+
+assign int_rx    = uart_config.read_back ? tx : rx;
 
 endmodule

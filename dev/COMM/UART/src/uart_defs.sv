@@ -26,14 +26,6 @@ package uart_defs;
   localparam VERSION_MINOR   = 8'h0;
   localparam VERSION_PATCHES = 8'h0;
 
-  // Modes of communication
-  typedef enum bit[1:0] 
-  {
-    SIMPLEX    = 2'b00,
-    HALFDUPLEX = 2'b01,
-    FULLDUPLEX = 2'b10
-  } Mode_t;
-
   typedef struct packed {
     logic overflow_error;
     logic fifo_empty;
@@ -49,22 +41,22 @@ package uart_defs;
   } RXStatus_t;
 
   typedef struct packed {
-    Mode_t mode;
-    // If the Uart communication mode
-    // is SIMPLEX take this bit into account
-    // 1 - Master     : use only TX line
-    // 0 - Not master : use only RX line
-    logic master;
+    // Enable or disable rts and cts management
+    logic flow_control;
+    // Read frame sent by TX
+    logic read_back;
     // Frame length can be 5 to 9 bits (Default 5)
     logic [4:0] frame_len;
     // Enable or disable parity bit
     logic parity;
     // Enable or disable double stop bit
     logic dstop;
-    // Enable or disable rts and cts management
-    logic flow_control;
+    // Enable RX
+    logic en_rx;
     // Flush RX FIFO
     logic flush_rx;
+    // Enable TX
+    logic en_tx;
     // Flush TX FIFO
     logic flush_tx;
   } Config_t;

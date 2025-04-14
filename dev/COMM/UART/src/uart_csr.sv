@@ -23,6 +23,12 @@
 // TXIrqMask      RW          0x18
 // Control        RW          0x1C
 // Version        RO          0x20
+
+// Control register structure
+//
+// [flow control][read back][frame len][parity][dstop][en rx][flush rx][en tx][flush tx]
+//       12           11        10:6       5      4      3        2       1        0
+
  
 module uart_csr
   import axi4_pkg::*;
@@ -45,12 +51,10 @@ module uart_csr
     output Config_t     uart_config_q_o,
 
     // TX interface
-    output logic        tx_enable_o,
     output logic [8:0]  tx_d_o,
     output logic        tx_d_valid_o,
 
     // RX interface
-    output logic        rx_enable_o,
     input  logic [8:0]  rx_d_i,
     input  logic        rx_d_valid_i,
     output logic        rx_d_ready_o,
@@ -82,30 +86,85 @@ module uart_csr
   logic                  wr_control;
   logic                  rd_version;
 
+  logic                  acc_type_err;
+  logic                  acc_size_err;
+  logic                  acc_len_err;
+  logic                  acc_err;
+
   logic [31:0]           bus_addr_d, bus_addr_q;
   logic [31:0]           bus_wdata_d, bus_wdata_q;
   logic [31:0]           bus_rdata_d, bus_rdata_q;
+  XRESP_t                bus_resp_d, bus_resp_q;
   logic [bus.idlen-1:0]  bus_id_d, bus_id_q;
 
   logic [31:0]           rxirqmask;
   logic [31:0]           txirqmask;
-  Config_t               cast_config, cast_config_n;
+  Config_t               cast_config;
 
   assign sel = REG_ADDR_MAP == {bus_addr_d[31:12], 12'b0};
 
-  assign rd_divider   = rd & sel & bus_addr_d[11:0] == DIVIDER;
-  assign wr_divider   = wr & sel & bus_addr_d[11:0] == DIVIDER;
-  assign rd_rxdata    = rd & sel & bus_addr_d[11:0] == RXDATA;
-  assign rd_rxstatus  = rd & sel & bus_addr_d[11:0] == RXSTATUS;
-  assign rd_rxirqmask = rd & sel & bus_addr_d[11:0] == RXIRQMASK;
-  assign wr_rxirqmask = wr & sel & bus_addr_d[11:0] == RXIRQMASK;
-  assign wr_txdata    = wr & sel & bus_addr_d[11:0] == TXDATA;
-  assign rd_txstatus  = rd & sel & bus_addr_d[11:0] == TXSTATUS;
-  assign rd_txirqmask = rd & sel & bus_addr_d[11:0] == TXIRQMASK;
-  assign wr_txirqmask = wr & sel & bus_addr_d[11:0] == TXIRQMASK;
-  assign rd_control   = rd & sel & bus_addr_d[11:0] == CONTROL;
-  assign wr_control   = wr & sel & bus_addr_d[11:0] == CONTROL;
-  assign rd_version   = rd & sel & bus_addr_d[11:0] == VERSION;
+  always_comb begin
+    rd_divider   = 0;
+    wr_divider   = 0;
+    rd_rxdata    = 0;
+    rd_rxstatus  = 0;
+    rd_rxirqmask = 0;
+    wr_rxirqmask = 0;
+    wr_txdata    = 0;
+    rd_txstatus  = 0;
+    rd_txirqmask = 0;
+    wr_txirqmask = 0;
+    rd_control   = 0;
+    wr_control   = 0;
+    rd_version   = 0;
+
+    acc_type_err = 0;
+    acc_err = 0;
+
+    if(sel) begin
+      case (bus_addr_d[11:0])
+        DIVIDER : begin
+          rd_divider = rd;
+          wr_divider = wr;
+        end
+        RXDATA : begin
+          rd_rxdata = rd;
+          acc_type_err = wr;
+        end
+        RXSTATUS : begin
+          rd_rxstatus = rd;
+          acc_type_err = wr;
+        end
+        RXIRQMASK : begin
+          rd_rxirqmask = rd;
+          wr_rxirqmask = wr;
+        end
+        TXDATA : begin
+          acc_type_err = rd;
+          wr_txdata = wr;
+        end
+        TXSTATUS : begin
+          rd_txstatus = rd;
+          acc_type_err = wr;
+        end
+        TXIRQMASK : begin
+          rd_txirqmask = rd;
+          wr_txirqmask = wr;
+        end
+        CONTROL : begin
+          rd_control = rd;
+          wr_control = wr;
+        end
+        VERSION : begin
+          rd_version = rd;
+          acc_type_err = wr;
+        end
+        default : begin
+          acc_err = 1;
+        end
+      endcase
+    end  
+  end
 
   // Divider register
   always_ff @(posedge clk or negedge rst_n) begin
@@ -146,21 +205,22 @@ module uart_csr
 
   // Write Uart configuration register
   always_comb begin
-    cast_config_n = cast_config;
+    cast_config = $bits(cast_config)'(bus_wdata_d[$bits(Config_t)-1:0]);
     if($countones(cast_config.frame_len) != 1) begin
-      cast_config_n.frame_len = 5'h1;  
+      cast_config.frame_len = 5'h1;  
     end
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
-      cast_config     <= 0;
-      uart_config_q_o <= 0;
+      uart_config_q_o <= $bits(Config_t)'('h100A);
     end else begin
       if(wr_control) begin
-        cast_config <= $bits(cast_config)'(bus_wdata_d[$bits(Config_t)-1:0]);
+        uart_config_q_o <= cast_config;
+      end else begin
+        uart_config_q_o.flush_rx <= 1'b0;
+        uart_config_q_o.flush_tx <= 1'b0;
       end
-      uart_config_q_o <= cast_config_n;
     end
   end
 
@@ -204,6 +264,9 @@ module uart_csr
     bus.b       = '0;
     bus.b_valid = 0;
 
+    acc_size_err = 0;
+    acc_len_err = 0;
+
     wr = 0;
     rd = 0;
 
@@ -218,6 +281,9 @@ module uart_csr
 
           bus_addr_d = bus.ar.addr;
           bus_id_d = bus.ar.id;
+
+          acc_size_err = bus.ar.size != S4;
+          acc_len_err  = bus.ar.len[7:1] != 0;
           
           state_d = CSR_RRESP;
         end else if(bus.aw_valid && bus.w_valid) begin
@@ -228,13 +294,19 @@ module uart_csr
           bus_addr_d = bus.aw.addr;
           bus_wdata_d = bus.w.data;
           bus_id_d = bus.aw.id;
+
+          acc_size_err = bus.aw.size != S4;
+          acc_len_err  = bus.ar.len[7:1] != 0;
           
           state_d = CSR_BRESP;
         end else if(bus.aw_valid)  begin
           bus.aw_ready = 1;
 
-          bus_id_d = bus.aw.id;
           bus_addr_d = bus.aw.addr;
+          bus_id_d = bus.aw.id;
+
+          acc_size_err = bus.aw.size != S4;
+          acc_len_err  = bus.ar.len[7:1] != 0;
 
           state_d = CSR_WW;
         end else if(bus.w_valid)  begin
@@ -246,22 +318,24 @@ module uart_csr
       CSR_WW : begin
         bus_id_d = bus_id_q;
         bus_addr_d = bus_addr_q;
+        
+        bus.w_ready = 1;
 
         if(bus.w_valid) begin
-          bus.w_ready = 1;
-
           wr = 1;
-
           state_d = CSR_BRESP;
         end
       end
       CSR_WAW : begin
-        if(bus.aw_valid) begin
-          bus.aw_ready = 1;
+        bus.aw_ready = 1;
 
-          bus_id_d = bus.aw.id;
+        if(bus.aw_valid) begin
           bus_addr_d = bus.aw.addr;
           bus_wdata_d = bus_wdata_q;
+          bus_id_d = bus.aw.id;
+
+          acc_size_err = bus.aw.size != S4;
+          acc_len_err  = bus.ar.len[7:1] != 0;
 
           wr = 1;
 
@@ -272,14 +346,14 @@ module uart_csr
         bus.r_valid = 1;
         bus.r.last  = 1;
         bus.r.data  = bus_rdata_q;
-        bus.r.resp  = bus_addr_q > VERSION ? SLVERR : OKAY;
+        bus.r.resp  = bus_resp_q;
         bus.r.id    = bus_id_q;
         if(bus.r_ready)
           state_d = CSR_IDLE;
       end
       CSR_BRESP : begin
         bus.b_valid = 1;
-        bus.b.resp  = bus_addr_q > VERSION ? SLVERR : OKAY;
+        bus.b.resp  = bus_resp_q;
         bus.b.id    = bus_id_q;
         if(bus.b_ready)
           state_d = CSR_IDLE;
@@ -289,29 +363,25 @@ module uart_csr
     endcase
   end
 
+  assign bus_resp_d = acc_err ? DECERR : ((acc_type_err | acc_size_err | acc_len_err) ? SLVERR : OKAY);
+
   always_ff @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
-      bus_id_q   <= 0;
-      bus_addr_q <= 0;
+      bus_id_q    <= 0;
+      bus_addr_q  <= 0;
       bus_wdata_q <= 0;
       bus_rdata_q <= 0;
-      state_q    <= CSR_RST;
+      bus_resp_q  <= OKAY;
+      state_q     <= CSR_RST;
     end else begin
-      bus_id_q   <= bus_id_d;
-      bus_addr_q <= bus_addr_d;
+      bus_id_q    <= bus_id_d;
+      bus_addr_q  <= bus_addr_d;
       bus_wdata_q <= bus_wdata_d;
       bus_rdata_q <= bus_rdata_d;
-      state_q    <= state_d;
+      bus_resp_q  <= bus_resp_d;
+      state_q     <= state_d;
     end
-  end
-
-  assign tx_enable_o = uart_config_q_o.mode == FULLDUPLEX 
-                     | uart_config_q_o.mode == HALFDUPLEX
-                     | (uart_config_q_o.mode == SIMPLEX & uart_config_q_o.master);
-
-  assign rx_enable_o = uart_config_q_o.mode == FULLDUPLEX 
-                     | uart_config_q_o.mode == HALFDUPLEX
-                     | (uart_config_q_o.mode == SIMPLEX & ~uart_config_q_o.master);                     
+  end                  
 
 endmodule
 

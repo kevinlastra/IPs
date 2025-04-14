@@ -17,8 +17,6 @@ module uart_tx
   
   input  logic      tck,
 
-  input  logic      tx_enable_i,
-
   // UART interface
   output logic      tx_q_o,
   input  logic      cts_n_i,
@@ -85,8 +83,8 @@ module uart_tx
 
     case(state_q)
       IDLE : begin
-        if(tx_enable_i & deq_valid) begin
-          if((!cts_n_i & uart_config_i.flow_control) | !uart_config_i.flow_control) begin
+        if(uart_config_i.en_tx & deq_valid) begin
+          if(!cts_n_i) begin
             frame_bit = 1'b0;
             frame = deq_data;
             state_d = D1;

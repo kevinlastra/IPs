@@ -16,8 +16,6 @@ import uart_defs::*;
   input       logic        rst_n,
 
   input       logic        tck,
-
-  input       logic        rx_enable_i,
   
   // UART interface
   input       logic        rx_i,
@@ -66,7 +64,7 @@ logic overrun_error;
 
 assign wakeup_o = state_q != IDLE;
 
-// RX flow control
+// RX frame
 always_comb begin
   state_d = state_q;
 
@@ -80,7 +78,7 @@ always_comb begin
 
   case(state_q)
     IDLE : begin
-      if(rx_enable_i & ~rx_q) begin
+      if(uart_config_i.en_rx & ~rx_q) begin
         even_d = 1'b1;
         frame_data_d = '0;
         state_d = D1;
@@ -163,7 +161,7 @@ always_comb begin
   endcase
 end
 
-assign rts_n_o = uart_config_i.flow_control ? ~(frame_ready & rx_enable_i) : 1'b0;
+assign rts_n_o = ~(frame_ready & uart_config_i.en_rx);
 
 always_ff @(posedge tck or negedge rst_n) begin
   if(!rst_n) begin
