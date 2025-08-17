@@ -1,70 +1,48 @@
+// ============================================================
+// Project      : AMBA AXI5 interface
+// Author       : Kevin Lastra
+// Description  : AMBA AXI5 bus based on version ARM IHI 0022J
+// 
+// Revision     : 1.0.0
+// 
+// License      : MIT License
+// ============================================================
 
 // AXI4 Interface
-// Dont support User port
 
-interface axi4
-  import axi4_pkg::*;
+interface axi5
+  import axi5_pkg::*;
   #(
     parameter alen = 32,
     parameter xlen = 32,
-    parameter idlen = 2
-  )
-  (input logic clk);
-
-  typedef struct packed {
-    // 
-    logic bufferable; 
-    // 
-    logic modifiable;
-    // 
-    logic RA;
-    //
-    logic WA;
-  } AXCache_t;
-
-  typedef struct packed {
-    // 1: priviledged
-    // 0: unpriviledged
-    logic priviledge; 
-    // 1: Non-secure
-    // 0: secure
-    logic secure;
-    // 1: instruction access
-    // 0: data access
-    logic access;
-  } AXProt_t;
-  
+    parameter ilen = 2
+  );
   
   typedef struct packed {
     logic [alen-1:0]  addr;
     AXSize_t          size;
     AXBurst_t         burst;
-    AXCache_t         cache;
-    AXProt_t          prot;
-    logic [idlen-1:0] id;
+    logic [2:0]       prot;
+    logic [ilen-1:0]  id;
     logic [7:0]       len;
-    Lock_t            lock;
-    logic [3:0]       qos;
-    logic [3:0]       region;
   } AX_t;
 
   typedef struct packed {
     logic                last;
     logic [xlen-1:0]     data;
     logic [(xlen/8)-1:0] strb;
-    logic [idlen-1:0]    id;
   } W_t;
 
   typedef struct packed {
     XRESP_t           resp;
-    logic [idlen-1:0] id;
+    logic [ilen-1:0]  id;
   } B_t;
 
   typedef struct packed {
     logic             last;
     logic [xlen-1:0]  data;
     XRESP_t           resp;
-    logic [idlen-1:0] id;
+    logic [ilen-1:0]  id;
   } R_t;
 
   // Adresse write bus

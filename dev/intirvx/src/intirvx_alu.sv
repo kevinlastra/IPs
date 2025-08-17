@@ -169,17 +169,22 @@ logic neg;
     end
   end
 
-  fifo #(.DATA_SIZE(70)) pipeline_alu2wb
+  logic full;
+  logic empty;
+  
+  fifo #(.data_size(70), .buffer_size(1)) pipeline_alu2wb
   (
     .clk       (clk),
     .rst_n     (rst_n),
-    .enq       ({res, regman_rd, branch, j_res}),
+    .enq_data  ({res, regman_rd, branch, j_res}),
     .enq_valid (regman_valid & valid_instruction),
     .enq_ready (regman_ready),
-    .deq       ({alu_result, alu_rd, alu_jump, alu_jump_addr}),
+    .deq_data  ({alu_result, alu_rd, alu_jump, alu_jump_addr}),
     .deq_valid (alu_valid),
     .deq_ready (alu_ready),
-    .flush     (flush)
+    .flush     (flush),
+    .full      (full),
+    .empty     (empty)
   );
 
 endmodule

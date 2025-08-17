@@ -12,7 +12,6 @@ import interfaces_pkg::*;
   // Ifetch interface
   input  logic [xlen-1:0] inst,
   input  logic [alen-1:0] inst_pc,
-  input  logic [0:0]      inst_status,
   input  logic            inst_valid,
   output logic            inst_ready,
 

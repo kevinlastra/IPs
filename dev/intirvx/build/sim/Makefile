@@ -9,18 +9,18 @@ TB= ${PWD}/tb_cpu.sv --top-module tb_cpu
 TB-CC=-exe ${PWD}/tb_cpu.cpp
 VTB=Vtb_cpu
 
-CPU_PARAMS=$(wildcard ${PWD}/../../rtl/cpu/*_parameters.sv)
-CPU_PKG=$(wildcard ${PWD}/../../rtl/cpu/*_pkg.sv)
-CPU_SRC=$(wildcard ${PWD}/../../rtl/cpu/*)
+CPU_PARAMS=$(wildcard ${PWD}/../../src/*_parameters.sv)
+CPU_PKG=$(wildcard ${PWD}/../../src/*_pkg.sv)
+CPU_SRC=$(wildcard ${PWD}/../../src/*)
 FILTER=$(filter-out ${CPU_PKG}, $(filter-out ${CPU_PARAMS}, $(CPU_SRC)))
 
 SRC= \
 		${FILTER} \
-		$(wildcard ${PWD}/../../rtl/clock/*) \
-		$(wildcard ${PWD}/../../rtl/memory/*) \
-		$(wildcard ${PWD}/../../rtl/utils/*)
+		$(wildcard ${PWD}/../../../memory/*) \
+		$(wildcard ${PWD}/../../../bus/src/*) \
+		$(wildcard ${PWD}/../../../util/sync/src/*)
 
-PKGS=../../rtl/cpu/cpu_parameters.sv ../../rtl/cpu/csr_pkg.sv ../../rtl/cpu/interfaces_pkg.sv
+PKGS=../../src/cpu_parameters.sv ../../src/csr_pkg.sv ../../src/interfaces_pkg.sv
 
 all: clean cpu run
 

@@ -25,7 +25,6 @@ module fifo
 if (buffer_size == 1) begin : single_buffer
 
   logic [data_size-1:0] data;
-  logic                 full;
     
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
@@ -49,7 +48,7 @@ if (buffer_size == 1) begin : single_buffer
           3'b100,
           3'b110,
           3'b111 : begin
-            data <= enq;
+            data <= enq_data;
             full <= 1'b1;
           end
         endcase
@@ -59,7 +58,8 @@ if (buffer_size == 1) begin : single_buffer
 
   assign enq_ready = !full | (full & deq_ready);
   assign deq_valid = full;
-  assign deq       = data;
+  assign deq_data  = data;
+  assign empty     = !full;
 
 end else if (buffer_size > 1) begin : nsize_buffer
 

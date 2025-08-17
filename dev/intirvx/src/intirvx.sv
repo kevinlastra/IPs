@@ -1,4 +1,12 @@
-
+// ============================================================
+// IP           : intirvx
+// Author       : Kevin Lastra
+// Description  : Inti RVX CPU
+// 
+// Revision     : 1.0.0
+// 
+// License      : MIT License
+// ============================================================
 
 
 module intirvx
@@ -6,28 +14,18 @@ import cpu_parameters::*;
 import interfaces_pkg::*;
 (
   // Global interface
-  input logic clk,
-  input logic rst_n,
-  
-  // system imem interface
-  ibus fetch_bus,
+  input logic            clk,
+  input logic            rst_n,
+  input logic [ilen-1:0] hart_id,
 
-  // system dmem interface
-  output logic r_v,
-  output logic w_v,
-  output logic[xlen-1:0] data_adr,
-  output logic[xlen-1:0] data_o,
-  output logic[3:0] strobe,
-
-  input logic[xlen-1:0] dmem_res,
-  input logic dmem_res_v,
-  input logic dmem_res_error
+  // system interface
+  axi5.master i_axi,
+  axi5.master d_axi
 ); 
 
   // ifetch
   logic [xlen-1:0]      inst_f2d;
   logic [alen-1:0]      inst_pc_f2d;
-  logic [0:0]           inst_status_f2d;
   logic                 inst_f2d_valid;
   logic                 inst_f2d_ready;
 
@@ -70,21 +68,19 @@ import interfaces_pkg::*;
   logic [xlen-1:0] alu_jump_addr;
 
   logic            alu2regman_ready;
+  logic            mem2regman_ready;
   logic            alu2ifetch_ready;
   logic            alu_ready;
   logic            alu_valid;
 
   // MEM
-  logic mem_result_v;
-  logic[xlen-1:0] mem_result;
-
-  logic[4:0] mem_rd;
-
-  logic mem_exception;
-  logic ok_mem2r;
+  logic [xlen-1:0] mem_res;
+  logic            mem_exception;
+  logic [4:0]      mem_rd;
+  logic            mem_valid;
+  logic            mem_ready;
 
   // CSR
-
   logic csr_result_v;
   logic[xlen-1:0] csr_result;
   logic[4:0] csr_rd;
@@ -108,10 +104,10 @@ import interfaces_pkg::*;
   (
     .clk          (clk),
     .rst_n        (rst_n),
-    .fetch_bus    (fetch_bus),
+    .hart_id      (hart_id),
+    .axi          (i_axi),
     .inst         (inst_f2d),
     .inst_pc      (inst_pc_f2d),
-    .inst_status  (inst_status_f2d),
     .inst_valid   (inst_f2d_valid),
     .inst_ready   (inst_f2d_ready),
     .target       (target),
@@ -127,7 +123,6 @@ import interfaces_pkg::*;
     // F2D
     .inst            (inst_f2d),
     .inst_pc         (inst_pc_f2d),
-    .inst_status     (inst_status_f2d),
     .inst_valid      (inst_f2d_valid),
     .inst_ready      (inst_f2d_ready),
     // D2R
@@ -216,32 +211,24 @@ import interfaces_pkg::*;
   );
 
   
-  mem mem
+  intirvx_mem mem
   (
-    .clk(clk),
-    .rst_n(rst_n),
-    .ok_o(ok_mem2r),
-    .unit(decode_rm2c.unit),
-    .sub_unit(decode_rm2c.sub_unit),
-    .sel(decode_rm2c.sel),
-    .rs1(rs1),
-    .rs2(rs2),
-    .rd_i(rd),
-    .immediate(immediate_o),
-    .imm(decode_rm2c.imm),
-    .r_v(r_v),
-    .w_v(w_v),
-    .req_adr(data_adr),
-    .req_data(data_o),
-    .req_strobe(strobe),
-    .hit(dmem_res_v),
-    .mem_res(dmem_res),
-    .mem_res_error(dmem_res_error),
-    .result(mem_result),
-    .rd_o(mem_rd),
-    .result_v(mem_result_v),
-    .exception(mem_exception),
-    .ok_i(ok_wb2mem)
+    .clk           (clk),
+    .rst_n         (rst_n),
+    .hart_id       (hart_id),
+    .regman_decode (decode_rm2c),
+    .regman_rs1    (rs1),
+    .regman_rs2    (rs2),
+    .regman_rd     (rd),
+    .regman_imm    (immediate_o),
+    .regman_valid  (regman_valid),
+    .regman_ready  (mem2regman_ready),
+    .axi           (d_axi),
+    .mem_res       (mem_res),
+    .mem_exception (mem_exception),
+    .mem_rd        (mem_rd),
+    .mem_valid     (mem_valid),
+    .mem_ready     (mem_ready)
   );
 
   csr csr
@@ -264,20 +251,22 @@ import interfaces_pkg::*;
     .ok_i(ok_wb2csr)
   );
 
-  write_back write_back
+  intirvx_write_back write_back
   (
     .clk       (clk),
     .rst_n     (rst_n),
     // ALU interface
-    .alu_res   (alu_result),
-    .alu_rd    (alu_rd),
-    .alu_valid (alu_valid),
-    .alu_ready (alu_ready),
-    .mem_res(mem_result),
-    .mem_rd(mem_rd),
-    .mem_res_v(mem_result_v),
-    .mem_exception(mem_exception),
-    .mem_ok(ok_wb2mem),
+    .alu_res       (alu_result),
+    .alu_rd        (alu_rd),
+    .alu_valid     (alu_valid),
+    .alu_ready     (alu_ready),
+    // MEM interface
+    .mem_res       (mem_res),
+    .mem_exception (mem_exception),
+    .mem_rd        (mem_rd),
+    .mem_valid     (mem_valid),
+    .mem_ready     (mem_ready),
+    // CSR interface
     .csr_exception(csr_exception),
     .csr_res(csr_result),
     .csr_rd(csr_rd),

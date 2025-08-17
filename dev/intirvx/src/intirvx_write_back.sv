@@ -1,7 +1,14 @@
+// ============================================================
+// IP           : intirvx_write_back
+// Author       : Kevin Lastra
+// Description  : IntiRVX CPU write back stage
+// 
+// Revision     : 1.0.0
+// 
+// License      : MIT License
+// ============================================================
 
-
-
-module write_back
+module intirvx_write_back
 import cpu_parameters::*;
 import interfaces_pkg::*;
 (
@@ -16,11 +23,11 @@ import interfaces_pkg::*;
   output logic            alu_ready,
 
   // MEM interface
-  input logic[xlen-1:0] mem_res,
-  input logic[4:0] mem_rd,
-  input logic mem_res_v,
-  input logic mem_exception,
-  output logic mem_ok,
+  input logic [xlen-1:0]  mem_res,
+  input logic             mem_exception,
+  input logic [4:0]       mem_rd,
+  input logic             mem_valid,
+  output logic            mem_ready,
 
   // CSR interface
   input logic csr_exception,
@@ -38,23 +45,23 @@ import interfaces_pkg::*;
 
   logic exception;
 
-  always begin
-    exception = csr_exception | mem_exception;
-  end
+  assign exception = csr_exception | mem_exception;
 
   always_comb begin
     wb_valid = 0;
+    mem_ready = 1'b0;
     alu_ready = 1'b0;
 
-    if(mem_res_v) begin
-      wb_valid = 1;  
-      wb.data = mem_res;
-      wb.adr  = mem_rd;
+    if(mem_valid) begin
+      wb_valid  = 1'b1;
+      mem_ready = 1'b1;
+      wb.data   = mem_res;
+      wb.adr    = mem_rd;
     end else if(alu_valid) begin
-      wb_valid  = alu_valid;
+      wb_valid  = 1'b1;
       alu_ready = 1'b1;
-      wb.data = alu_res;
-      wb.adr  = alu_rd;
+      wb.data   = alu_res;
+      wb.adr    = alu_rd;
     end else if(csr_res_v) begin
       wb_valid = 1;
       wb.data = csr_res;
@@ -66,7 +73,6 @@ import interfaces_pkg::*;
   end
 
   always begin
-    mem_ok = !exception;
     csr_ok = 1;
   end
 

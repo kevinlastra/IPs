@@ -267,18 +267,21 @@ end
 
   logic enq_ready;
   logic deq_valid;
-
-fifo #(.DATA_SIZE($bits(data_i))) pipeline_csr2wb
+  logic full;
+  logic empty;
+fifo #(.data_size($bits(data_i)), .buffer_size(1)) pipeline_csr2wb
 (
   .clk       (clk),
   .rst_n     (rst_n),
-  .enq       (data_i),
+  .enq_data  (data_i),
   .enq_valid (1'b0),
   .enq_ready (enq_ready),
-  .deq       (data_o),
+  .deq_data  (data_o),
   .deq_valid (deq_valid),
   .deq_ready (ok_i),
-  .flush     (flush)
+  .flush     (flush),
+  .full      (full),
+  .empty     (empty)
 );
 
 always begin

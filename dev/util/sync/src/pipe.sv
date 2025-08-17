@@ -26,7 +26,7 @@ module pipe
     assert (DEPTH < 1) $display("Pipe DEPTH shall be greater or equal than 1");
   end
 
-generate if(DEPTH == 1) begin
+generate if(DEPTH == 1) begin : single
 
   logic [DATA_SIZE-1:0] data;
   logic                 valid;
@@ -47,7 +47,7 @@ generate if(DEPTH == 1) begin
   assign deq_valid = valid;
   assign enq_ready = deq_ready;
   
-end if(DEPTH > 1) begin
+end if(DEPTH > 1) begin : multiple
 
   logic [DATA_SIZE-1:0] data[DEPTH];
 

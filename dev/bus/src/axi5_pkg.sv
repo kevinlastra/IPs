@@ -1,6 +1,6 @@
 
 
-package axi4_pkg;
+package axi5_pkg;
   
     // Burst types
   typedef enum bit[1:0]
@@ -32,12 +32,5 @@ package axi4_pkg;
     SLVERR  = 2'b10,
     DECERR  = 2'b11
   } XRESP_t;
-
-  //
-  typedef enum bit
-  {
-    NORMAL    = 1'b0,
-    EXCLUSIVE = 1'b1
-  } Lock_t;
-
+  
 endpackage

@@ -149,17 +149,22 @@ import interfaces_pkg::*;
     end
   end
 
-  fifo #(.DATA_SIZE(152)) pipeline_pg2r
+  logic full;
+  logic empty;
+
+  fifo #(.data_size(152), .buffer_size(1)) pipeline_pg2r
   (
     .clk       (clk),
     .rst_n     (rst_n),
-    .enq       ({decode, decode_pc, rs1, rs2, rd, immediate, wb_valid, branch_instr | decode.mret}),
+    .enq_data  ({decode, decode_pc, rs1, rs2, rd, immediate, wb_valid, branch_instr | decode.mret}),
     .enq_valid (enq_valid),
     .enq_ready (enq_ready),
-    .deq       ({regman_decode, regman_pc, regman_rs1, regman_rs2, regman_rd, regman_imm, regman_instret, branch_instr_o}),
+    .deq_data  ({regman_decode, regman_pc, regman_rs1, regman_rs2, regman_rd, regman_imm, regman_instret, branch_instr_o}),
     .deq_valid (regman_valid),
     .deq_ready (regman_ready),
-    .flush     (flush | branch_instr_o)
+    .flush     (flush | branch_instr_o),
+    .full      (full),
+    .empty     (empty)
   );
 
 endmodule
