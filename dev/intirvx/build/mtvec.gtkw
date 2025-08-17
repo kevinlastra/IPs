@@ -1,0 +1,80 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Sat Jun  3 14:38:24 2023
+[*]
+[dumpfile] "/home/kalm/IntiRVX/build/sim/waveform.vcd"
+[dumpfile_mtime] "Sat Jun  3 14:34:26 2023"
+[dumpfile_size] 294000
+[savefile] "/home/kalm/IntiRVX/build/mtvec.gtkw"
+[timestart] 119
+[size] 923 911
+[pos] -1 -1
+*-2.000000 123 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] TOP.
+[treeopen] TOP.tb_cpu.
+[treeopen] TOP.tb_cpu.cpu.csr.
+[treeopen] TOP.tb_cpu.cpu.pc_gen.
+[sst_width] 233
+[signals_width] 240
+[sst_expanded] 1
+[sst_vpaned_height] 252
+@28
+TOP.tb_cpu.cpu.pc_control.rst_n
+TOP.tb_cpu.cpu.pc_control.clk
+@200
+-
+@22
+TOP.tb_cpu.cpu.pc_gen.pc[31:0]
+TOP.tb_cpu.cpu.pc_gen.next_pc[31:0]
+@28
+TOP.tb_cpu.cpu.pc_gen.jal_instr
+@22
+TOP.tb_cpu.cpu.pc_gen.instruction[31:0]
+@28
+TOP.tb_cpu.cpu.pc_gen.decoder.unit[1:0]
+TOP.tb_cpu.cpu.pc_gen.decoder.sub_unit[2:0]
+@22
+TOP.tb_cpu.cpu.pc_gen.decoder.sel[3:0]
+@200
+-
+@28
+TOP.tb_cpu.cpu.register_manager.dispatch
+TOP.tb_cpu.cpu.register_manager.unit[1:0]
+TOP.tb_cpu.cpu.register_manager.sub_unit[2:0]
+@22
+TOP.tb_cpu.cpu.register_manager.sel[3:0]
+@200
+-
+@28
+TOP.tb_cpu.cpu.register_manager.unit_o[1:0]
+TOP.tb_cpu.cpu.register_manager.sub_unit_o[2:0]
+@22
+TOP.tb_cpu.cpu.register_manager.sel_o[3:0]
+@200
+-
+@28
+TOP.tb_cpu.cpu.csr.unit[1:0]
+@22
+TOP.tb_cpu.cpu.csr.sel[3:0]
+@28
+TOP.tb_cpu.cpu.csr.imm
+@22
+TOP.tb_cpu.cpu.csr.rs1[31:0]
+TOP.tb_cpu.cpu.csr.csr_adr[11:0]
+TOP.tb_cpu.cpu.csr.rd_i[4:0]
+TOP.tb_cpu.cpu.register_manager.s_imm[11:0]
+TOP.tb_cpu.cpu.register_manager.immediate[31:0]
+@28
+TOP.tb_cpu.cpu.register_manager.imm
+TOP.tb_cpu.cpu.register_manager.l_imm_v
+TOP.tb_cpu.cpu.register_manager.s_imm_v
+TOP.tb_cpu.cpu.csr.valid_instruction
+@22
+TOP.tb_cpu.cpu.csr.mtvec_q[31:0]
+@23
+TOP.tb_cpu.cpu.csr.mtvec_d[31:0]
+@22
+TOP.tb_cpu.cpu.csr.clear_mask1[31:0]
+TOP.tb_cpu.cpu.csr.clear_mask2[31:0]
+[pattern_trace] 1
+[pattern_trace] 0
